@@ -5,7 +5,7 @@ from tqdm import tqdm
 import pandas as pd
 
 
-ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'1_ETF holdings and prices'
+ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'equity_market'/'1_etf'
 print(ETF_CACHE_DIR)
 if not os.path.exists(ETF_CACHE_DIR):
     print('Creating ETF cache directory')
@@ -23,6 +23,11 @@ ishares_etf_url_spec = {
     'iwn': ['239712','ishares-russell-2000-value-etf','IWN_holdings'],
     'iwd': ['239708','ishares-russell-1000-value-etf','IWD_holdings'],
     'iwf': ['239706','ishares-russell-1000-growth-etf','IWF_holdings'],
+    'ijr': ['239774','ishares-core-sp-smallcap-etf','IJR_holdings'],
+    'qual': ['256101','ishares-msci-usa-quality-factor-etf','QUAL_holdings'],
+    'usmv': ['239695','ishares-msci-usa-minimum-volatility-etf','USMV_holdings'],
+    'iqlt': ['271540','ishares-msci-international-developed-quality-factor-etf','IQLT_holdings'],
+    'hdv': ['239563','ishares-high-dividend-etf','HDV_holdings'],
     'iyr': ['239520','ishares-us-real-estate-etf','IYR_holdings']
 }
 
