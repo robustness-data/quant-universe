@@ -24,7 +24,7 @@ pivot_df = grouped_df.pivot(columns='Sector', index='etf_name', values='Weight (
 fig = px.imshow(pivot_df,
                 labels=dict(x="Sector", y="ETF Name", color="Weight (%)"),
                 x=pivot_df.columns, y=pivot_df.index,
-                text_auto=True)
+                text_auto=True, aspect='auto')
 
 fig.update_layout(
     title_text="<b>Sector Weights of iShares ETFs</b>",  # Title in bold
