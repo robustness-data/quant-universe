@@ -55,8 +55,8 @@ def plotly_heatmap(pivot_df, val_col, x_label=None, y_label=None, title=None):
 
 
 quotes_long, quotes_diff_long, quotes_diff_wide, corr_banks = prepare_shibor_quotes()
-tenor='3M'
-dt='2023-6-30'
+tenor = st.selectbox('Tenor', ("O/N", "1W", "2W", "1M", "3M", "6M", "9M", "1Y") )
+dt=st.selectbox('Date', tuple([x.date().isoformat() for x in quotes_long.Date.unique().tolist()]) )
 st.write(
     plotly_heatmap(
         get_corr_banks(corr_banks,dt,tenor),
