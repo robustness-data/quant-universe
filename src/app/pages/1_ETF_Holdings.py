@@ -14,6 +14,8 @@ def get_etf_holdings_data(dt: str):
     df = pd.read_csv(ROOT_DIR/f"data/equity_market/1_etf/ishares_holdings_{dt}.csv")
     # Convert the 'Weight (%)' column to numeric, handling any errors that might arise
     df['Weight (%)'] = pd.to_numeric(df['Weight (%)'], errors='coerce')
+    df.rename(columns={'as_of_date': 'Date'}, inplace=True)
+    #df['Market Value'] = df['Market Value'].fillna(0.0).apply(lambda x: float(x.replace(',','')) )/1e6  # in billions
     return df
 
 
@@ -57,3 +59,18 @@ etf_sector_weights=get_etf_sector_weights(etf_holdings_df)
 
 # Show the plot using streamlit
 st.plotly_chart(etf_sector_heatmap(etf_sector_weights))
+
+
+etf_name=st.selectbox("ETF Name:",etf_holdings_df.etf_name.sort_values().unique().tolist())
+rel_cols=st.multiselect(
+    "Data Field:",
+    etf_holdings_df.columns.tolist(),
+    ['Date','Ticker','Name','Sector','Weight (%)','Price','Market Value']
+)
+st.dataframe(
+    etf_holdings_df
+    .query(f"etf_name == '{etf_name}' ")
+    .sort_values("Weight (%)", ascending=False)
+    .reindex(rel_cols,axis=1)
+    .reset_index(drop=True)
+)
