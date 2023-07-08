@@ -8,6 +8,7 @@ import os
 print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 
+tab_corr, tab_ts = st.tabs(['Quote Correlation','Quote Time-series'])
 
 @st.cache_data
 def prepare_shibor_quotes():
@@ -62,21 +63,25 @@ def plotly_heatmap(pivot_df, val_col, x_label=None, y_label=None, title=None):
 
 quotes_long, quotes_diff_long, quotes_diff_wide_d, quotes_diff_wide_w = prepare_shibor_quotes()
 
-# correlation plot of quotes change
-tenor = st.selectbox('Tenor', ("O/N", "1W", "2W", "1M", "3M", "6M", "9M", "1Y") )
-freq=st.selectbox("Return frequency:",('Weekly','Daily'))
-shibor_ret_data_map={'Daily': quotes_diff_wide_d, 'Weekly': quotes_diff_wide_w}
-shibor_rel_dates=tuple([x.date().isoformat()
-                        for x in shibor_ret_data_map.get(freq).sort_index(ascending=False).index[1:].unique().tolist()])
-dt=st.selectbox('Date', index=0, options=shibor_rel_dates)
-ewm_hl=st.slider("Half-life of EWM Correlation in Days:", min_value=30, max_value=180, step=5, value=30)
+with tab_corr:
+    col1, col2, col3, col4 = st.columns(4)
 
-st.write(
-    plotly_heatmap(
-        get_corr_banks(shibor_ret_data_map.get(freq),dt,tenor,ewm_hl),
-        val_col='Correlation (%)',
-        title=f"Correlation of Shibor Quote Changes for Tenor {tenor} on {dt}")
-)
+    # correlation plot of quotes change
+    tenor = col1.selectbox('Tenor', ("O/N", "1W", "2W", "1M", "3M", "6M", "9M", "1Y"), key='corr', index=3)
+    freq = col2.selectbox("Return frequency:",('Weekly','Daily'))
+    shibor_ret_data_map={'Daily': quotes_diff_wide_d, 'Weekly': quotes_diff_wide_w}
+    shibor_rel_dates=tuple([x.date().isoformat()
+                            for x in shibor_ret_data_map.get(freq).sort_index(ascending=False).index[1:].unique().tolist()])
+    dt = col3.selectbox('Date', index=0, options=shibor_rel_dates)
+    #ewm_hl = col4.slider("EWM Halflife in Days:", min_value=30, max_value=180, step=5, value=30)
+    ewm_hl = col4.selectbox('EWM Half-life', (30,60,120,180))
+
+    st.write(
+        plotly_heatmap(
+            get_corr_banks(shibor_ret_data_map.get(freq),dt,tenor,ewm_hl),
+            val_col='Correlation (%)',
+            title=f"Correlation of Shibor Quote Changes for Tenor {tenor} on {dt}")
+    )
 
 
 # Plot time series of SHIBOR quotes
@@ -120,9 +125,13 @@ def plot_shibor_quotes_ts(quotes_range, tenor):
 
     return fig
 
-# Group the data by date and calculate the minimum, maximum, and median
-quotes_range = quotes_long.groupby(['Tenor','Date']).ShiborQuote.agg(['min', 'max', 'median']).reset_index()
-#st.write(quotes_range)
 
-tenor_shibor_ts=st.selectbox("Tenor of Shibor Quotes:",  ("O/N", "1W", "2W", "1M", "3M", "6M", "9M", "1Y") )
-st.plotly_chart(plot_shibor_quotes_ts(quotes_range, tenor_shibor_ts))
+with tab_ts:
+    # Group the data by date and calculate the minimum, maximum, and median
+    quotes_range = quotes_long.groupby(['Tenor','Date']).ShiborQuote.agg(['min', 'max', 'median']).reset_index()
+    #st.write(quotes_range)
+
+    #col_option, col_graph = st.columns([0.2,0.8])
+    tenor_shibor_ts=st.selectbox("Tenor", ("O/N", "1W", "2W", "1M", "3M", "6M", "9M", "1Y"),
+                                         index=3, key='ts')
+    st.plotly_chart(plot_shibor_quotes_ts(quotes_range, tenor_shibor_ts))
