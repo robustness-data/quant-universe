@@ -1,8 +1,19 @@
-# 宏观量化研究
+# 宏观量化投资
 
-星球专属GitHub代码库。
+星球专属文档与代码库。
 
-## 怎么运行Streamlit数据可视化App？
+## 相关主题
+
+### 因子投资
+本星球的一大主题就是量化多因子投资框架，主要围绕着MSCI因子、风险模型、指数构建策略展开。
+
+相关文档：
+- [Barra框架简介](https://github.com/robustness-data/quant-universe/blob/master/docs/factor%20investing/barra_intro.md)
+
+### 宏观研究与其在量化投资里的应用
+介绍宏观经济对于资产价格的影响，并搜集实用的利用宏观信号进行量化投资的例子。
+
+## Q&A：怎么运行Streamlit数据可视化App？
 
 ### 第一步： 准备相关python环境
 推荐python3.8或以上的版本，必须安装的库
