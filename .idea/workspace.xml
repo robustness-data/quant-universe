@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ChangeListManager">
+    <list default="true" id="99599dcf-b450-475d-90f7-14680ff299c0" name="Changes" comment="add barra model intro">
+      <change afterPath="$PROJECT_DIR$/.idea/.gitignore" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/csv-plugin.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/quant-universe.iml" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="FileTemplateManagerImpl">
+    <option name="RECENT_TEMPLATES">
+      <list>
+        <option value="Python Script" />
+      </list>
+    </option>
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2RrvGC8bcTvHuwBXHjV4LhWQZ25" />
+  <component name="ProjectLevelVcsManager">
+    <ConfirmationsSetting value="2" id="Add" />
+  </component>
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.OpenProjectViewOnStart": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "last_opened_file_path": "/Users/hanyan/Git/quant-universe",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  }
+}]]></component>
+  <component name="RunManager">
+    <configuration name="etf_holdings" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="quant-universe" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/data" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/data/etf_holdings.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <recent_temporary>
+      <list>
+        <item itemvalue="Python.etf_holdings" />
+      </list>
+    </recent_temporary>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="99599dcf-b450-475d-90f7-14680ff299c0" name="Changes" comment="" />
+      <created>1688020917271</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1688020917271</updated>
+    </task>
+    <task id="LOCAL-00001" summary="code for ETF holdings">
+      <created>1688165206037</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1688165206037</updated>
+    </task>
+    <task id="LOCAL-00002" summary="update cache data">
+      <created>1688274242566</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1688274242566</updated>
+    </task>
+    <task id="LOCAL-00003" summary="add the streamlit app structure, and a sample page showcase ETF sector weights">
+      <created>1688711843032</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1688711843032</updated>
+    </task>
+    <task id="LOCAL-00004" summary="update China's rates and FX data">
+      <created>1688711869536</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1688711869536</updated>
+    </task>
+    <task id="LOCAL-00005" summary="visualize shibor quotes in streamlit">
+      <created>1688716321075</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1688716321075</updated>
+    </task>
+    <task id="LOCAL-00006" summary="intro to streamlit app">
+      <created>1688716975337</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1688716975337</updated>
+    </task>
+    <task id="LOCAL-00007" summary="add select box for dates and tenors in SHIBOR app">
+      <created>1688717687839</created>
+      <option name="number" value="00007" />
+      <option name="presentableId" value="LOCAL-00007" />
+      <option name="project" value="LOCAL" />
+      <updated>1688717687839</updated>
+    </task>
+    <task id="LOCAL-00008" summary="update cache data">
+      <created>1688767255735</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1688767255735</updated>
+    </task>
+    <task id="LOCAL-00009" summary="add more ETFs in the script">
+      <created>1688767274267</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1688767274267</updated>
+    </task>
+    <task id="LOCAL-00010" summary="move cache file">
+      <created>1688767292129</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1688767292129</updated>
+    </task>
+    <task id="LOCAL-00011" summary="enhanced ETF holdings app">
+      <created>1688768483605</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1688768483605</updated>
+    </task>
+    <task id="LOCAL-00012" summary="enhanced ETF holdings app">
+      <created>1688770217555</created>
+      <option name="number" value="00012" />
+      <option name="presentableId" value="LOCAL-00012" />
+      <option name="project" value="LOCAL" />
+      <updated>1688770217555</updated>
+    </task>
+    <task id="LOCAL-00013" summary="update shibor graph">
+      <created>1688800534961</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1688800534961</updated>
+    </task>
+    <task id="LOCAL-00014" summary="update Shibor app">
+      <created>1688802005540</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1688802005540</updated>
+    </task>
+    <task id="LOCAL-00015" summary="add barra model intro">
+      <created>1688853787071</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1688853787071</updated>
+    </task>
+    <option name="localTasksCounter" value="16" />
+    <servers />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="code for ETF holdings" />
+    <MESSAGE value="add the streamlit app structure, and a sample page showcase ETF sector weights" />
+    <MESSAGE value="update China's rates and FX data" />
+    <MESSAGE value="visualize shibor quotes in streamlit" />
+    <MESSAGE value="intro to streamlit app" />
+    <MESSAGE value="add select box for dates and tenors in SHIBOR app" />
+    <MESSAGE value="update cache data" />
+    <MESSAGE value="add more ETFs in the script" />
+    <MESSAGE value="move cache file" />
+    <MESSAGE value="enhanced ETF holdings app" />
+    <MESSAGE value="update shibor graph" />
+    <MESSAGE value="update Shibor app" />
+    <MESSAGE value="add barra model intro" />
+    <option name="LAST_COMMIT_MESSAGE" value="add barra model intro" />
+  </component>
+</project>
