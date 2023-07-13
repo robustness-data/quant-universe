@@ -12,16 +12,16 @@ import streamlit as st
 import plotly.express as px
 
 
-CACHE_DIR=ROOT_DIR/'data'/'equity_market'/'3_fundamental'/'2023-07-10'
+CACHE_DIR=ROOT_DIR/'data'/'equity_market'/'3_fundamental'
 print(CACHE_DIR)
 
 
 @st.cache_data
 def load_stock_universe_data():
     univ_list = []
-    for f in os.listdir(CACHE_DIR):
-        index, _, as_of_date = f.replace('.csv','').split('_')
-        univ_df = pd.read_csv(CACHE_DIR/f).assign(index_name=index).assign(as_of_date=as_of_date)
+    for f in os.listdir(CACHE_DIR/'raw'):
+        index, as_of_date = f.replace('.csv','').split('_')
+        univ_df = pd.read_csv(CACHE_DIR/'raw'/f).assign(Universe=index).assign(Date=as_of_date)
         univ_list.append(univ_df)
         del univ_df
     all_univ_df = pd.concat(univ_list)
@@ -30,10 +30,26 @@ def load_stock_universe_data():
 
 
 universe_df = load_stock_universe_data()
-univ_names = universe_df.index_name.unique().tolist()
+univ_names = universe_df.Universe.unique().tolist()
 univ_names.sort()
+univ_dates = universe_df.Date.unique().tolist()
+univ_dates.sort()
 cols=universe_df.columns.tolist()
 cols.sort()
+
+univ_names_renamer = {
+    'US All Universe': 'us',
+    'NASDAQ Composite': 'nasdaq-composite',
+    'NASDAQ 100': 'nasdaq-100',
+    'NASDAQ Golden Dragon China': 'nasdaq-china',
+    'NASDAQ Biotech': 'nasdaq-biotech',
+    'S&P 500': 'sp500',
+    'Russell 1000': 'r1k',
+    'Russell 2000': 'r2k',
+    'Russell 3000': 'r3k',
+    'China All Universe': 'china',
+    'Hong Kong Universe': 'hongkong'
+}
 
 category_dict = {
     "General Meta": [
@@ -43,8 +59,8 @@ category_dict = {
             "Recent Earnings Date", "Upcoming Earnings Date", "Technical Rating"
         ],
     "Performance": [
-        'Change', 'Change %', 'Change 1W, %', 'Change 1M, %',
-        'Weekly Performance', '3-Month Performance', '6-Month Performance',
+        'Change', 'Change %', "Change from Open %", 'Change 1W, %', 'Change 1M, %',
+        'Weekly Performance', "Monthly Performance", '3-Month Performance', '6-Month Performance',
         'Yearly Performance', '5Y Performance', 'YTD Performance',
         '1-Month High', '3-Month High', '6-Month High', '52 Week High', 'All Time High',
         '1-Month Low', '3-Month Low', '6-Month Low', '52 Week Low', 'All Time Low',
@@ -122,19 +138,25 @@ category_dict = {
 
 }
 
-# select the universe and sector
+# select universe and date
+univ_col1, univ_col2 = st.columns(2)
+univ_name = univ_names_renamer.get(univ_col1.selectbox("Universe", [None]+list(univ_names_renamer.keys())), None)
+as_of_date = univ_col2.selectbox("As of Date", univ_dates)
+
+# select the industry and sector
 filter_col1, filter_col2, filter_col3 = st.columns(3)
-univ_name = filter_col1.selectbox("Universe", univ_names)
-sector_filter = filter_col2.selectbox("Sector Filter", [None]+universe_df.Sector.sort_values().unique().tolist())
-industry_filter = filter_col3.selectbox("Industry", [None]+universe_df.Industry.sort_values().unique().tolist())
+sector_filter = filter_col1.selectbox("Sector Filter", [None]+universe_df.Sector.sort_values().unique().tolist())
+industry_filter = filter_col2.selectbox("Industry Filter", [None]+universe_df.Industry.sort_values().unique().tolist())
+group_var = filter_col3.selectbox("Group by:", [None, 'Sector', 'Industry', 'Technical Rating', 'Universe'])
 
 # select metrics to plot
 available_vars = sorted(list(itertools.chain(*category_dict.values())))
 scatter_col1, scatter_col2, group_col3 = st.columns(3)
 metrics_x = scatter_col1.selectbox("Metrics x:", available_vars)
 metrics_y = scatter_col2.selectbox("Metrics y:", available_vars)
-group_var = group_col3.selectbox("Group by:", [None, 'Sector', 'Industry', 'Technical Rating'])
 
+
+#st.write([x for x in cols if x not in available_vars])
 
 def universe_filter(df, filter_dict):
     df = df.copy()
@@ -145,7 +167,8 @@ def universe_filter(df, filter_dict):
 
 
 univ_filter_dict = {
-    'index_name': univ_name,
+    'Universe': univ_name,
+    'Date': as_of_date,
     'Sector': sector_filter,
     'Industry': industry_filter
 }
