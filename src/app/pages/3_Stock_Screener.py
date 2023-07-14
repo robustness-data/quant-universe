@@ -36,6 +36,12 @@ univ_dates = universe_df.Date.unique().tolist()
 univ_dates.sort()
 cols=universe_df.columns.tolist()
 cols.sort()
+sector_names=universe_df.Sector.sort_values().unique().tolist()
+sector_names.sort()
+industry_names=universe_df.Industry.sort_values().unique().tolist()
+industry_names.sort()
+sector_industry_map = universe_df.groupby(['Sector']).apply(lambda x: x.Industry.unique().tolist()).to_dict()
+#st.write(sector_industry_map)
 
 univ_names_renamer = {
     'US All Universe': 'us',
@@ -145,8 +151,8 @@ as_of_date = univ_col2.selectbox("As of Date", univ_dates)
 
 # select the industry and sector
 filter_col1, filter_col2, filter_col3 = st.columns(3)
-sector_filter = filter_col1.selectbox("Sector Filter", [None]+universe_df.Sector.sort_values().unique().tolist())
-industry_filter = filter_col2.selectbox("Industry Filter", [None]+universe_df.Industry.sort_values().unique().tolist())
+sector_filter = filter_col1.selectbox("Sector Filter", [None]+sector_names)
+industry_filter = filter_col2.selectbox("Industry Filter", sector_industry_map.get(sector_filter,[None]+industry_names))
 group_var = filter_col3.selectbox("Group by:", [None, 'Sector', 'Industry', 'Technical Rating', 'Universe'])
 
 # select metrics to plot
