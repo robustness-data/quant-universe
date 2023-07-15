@@ -8,7 +8,7 @@ import os
 print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 
-tab_corr, tab_ts = st.tabs(['Quote Correlation','Quote Time-series'])
+tab_corr, tab_ts = st.tabs(['SHIBOR Quote Correlation','SHIBOR Quote Time-series'])
 
 @st.cache_data
 def prepare_shibor_quotes():

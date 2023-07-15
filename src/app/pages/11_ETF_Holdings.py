@@ -53,24 +53,26 @@ def get_all_available_dates():
     return available_dates
 
 
-dt=st.selectbox("Date of analysis",get_all_available_dates())
-etf_holdings_df=get_etf_holdings_data(dt)
-etf_sector_weights=get_etf_sector_weights(etf_holdings_df)
-
-# Show the plot using streamlit
-st.plotly_chart(etf_sector_heatmap(etf_sector_weights))
+tab_1, tab_2 = st.tabs(['Sector Weights', 'ETF Holdings Detail'])
 
 
-etf_name=st.selectbox("ETF Name:",etf_holdings_df.etf_name.sort_values().unique().tolist())
-rel_cols=st.multiselect(
-    "Data Field:",
-    etf_holdings_df.columns.tolist(),
-    ['Date','Ticker','Name','Sector','Weight (%)','Price','Market Value']
-)
-st.dataframe(
-    etf_holdings_df
-    .query(f"etf_name == '{etf_name}' ")
-    .sort_values("Weight (%)", ascending=False)
-    .reindex(rel_cols,axis=1)
-    .reset_index(drop=True)
-)
+with tab_1:
+    dt=st.selectbox("Date of analysis",get_all_available_dates())
+    etf_holdings_df=get_etf_holdings_data(dt)
+    etf_sector_weights=get_etf_sector_weights(etf_holdings_df)
+    st.plotly_chart(etf_sector_heatmap(etf_sector_weights)) # Show the plot using streamlit
+
+with tab_2:
+    etf_name=st.selectbox("ETF Name:",etf_holdings_df.etf_name.sort_values().unique().tolist())
+    rel_cols=st.multiselect(
+        "Data Field:",
+        etf_holdings_df.columns.tolist(),
+        ['Date','Ticker','Name','Sector','Weight (%)','Price','Market Value']
+    )
+    st.dataframe(
+        etf_holdings_df
+        .query(f"etf_name == '{etf_name}' ")
+        .sort_values("Weight (%)", ascending=False)
+        .reindex(rel_cols,axis=1)
+        .reset_index(drop=True)
+    )

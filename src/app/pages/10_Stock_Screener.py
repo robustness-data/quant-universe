@@ -144,25 +144,6 @@ category_dict = {
 
 }
 
-# select universe and date
-univ_col1, univ_col2 = st.columns(2)
-univ_name = univ_names_renamer.get(univ_col1.selectbox("Universe", [None]+list(univ_names_renamer.keys())), None)
-as_of_date = univ_col2.selectbox("As of Date", univ_dates)
-
-# select the industry and sector
-filter_col1, filter_col2, filter_col3 = st.columns(3)
-sector_filter = filter_col1.selectbox("Sector Filter", [None]+sector_names)
-industry_filter = filter_col2.selectbox("Industry Filter", sector_industry_map.get(sector_filter,[None]+industry_names))
-group_var = filter_col3.selectbox("Group by:", [None, 'Sector', 'Industry', 'Technical Rating', 'Universe'])
-
-# select metrics to plot
-available_vars = sorted(list(itertools.chain(*category_dict.values())))
-scatter_col1, scatter_col2, group_col3 = st.columns(3)
-metrics_x = scatter_col1.selectbox("Metrics x:", available_vars)
-metrics_y = scatter_col2.selectbox("Metrics y:", available_vars)
-
-
-#st.write([x for x in cols if x not in available_vars])
 
 def universe_filter(df, filter_dict):
     df = df.copy()
@@ -172,23 +153,59 @@ def universe_filter(df, filter_dict):
     return df
 
 
-univ_filter_dict = {
-    'Universe': univ_name,
-    'Date': as_of_date,
-    'Sector': sector_filter,
-    'Industry': industry_filter
-}
+# ============================================= Page Content Starts ================================================== #
 
 
-fig=px.scatter(
-    data_frame=universe_filter(universe_df, univ_filter_dict),
-    x=metrics_x,
-    y=metrics_y,
-    color=group_var,
-    hover_name='Description',
-    size='Market Capitalization',
-)
-st.plotly_chart(fig)
+
+scatter_tab, security_tab = st.tabs(['Fundamental Scatter', 'Security Analytics'])
+
+
+with scatter_tab:
+    # select universe and date
+    univ_col1, univ_col2 = st.columns(2)
+    univ_name = univ_names_renamer.get(univ_col1.selectbox("Universe", [None]+list(univ_names_renamer.keys())), None)
+    as_of_date = univ_col2.selectbox("As of Date", univ_dates)
+
+    # select the industry and sector
+    filter_col1, filter_col2, filter_col3 = st.columns(3)
+    sector_filter = filter_col1.selectbox("Sector Filter", [None]+sector_names)
+    industry_filter = filter_col2.selectbox("Industry Filter", [None]+sector_industry_map.get(sector_filter,industry_names))
+    group_var = filter_col3.selectbox("Group by:", [None, 'Sector', 'Industry', 'Technical Rating', 'Universe'])
+
+    # select metrics to plot
+    available_vars = sorted(list(itertools.chain(*category_dict.values())))
+    scatter_col1, scatter_col2, group_col3 = st.columns(3)
+    metrics_x = scatter_col1.selectbox("Metrics x:", available_vars)
+    metrics_y = scatter_col2.selectbox("Metrics y:", available_vars)
+
+
+    #st.write([x for x in cols if x not in available_vars])
+
+    univ_filter_dict = {
+        'Universe': univ_name,
+        'Date': as_of_date,
+        'Sector': sector_filter,
+        'Industry': industry_filter
+    }
+
+
+    fig=px.scatter(
+        data_frame=universe_filter(universe_df, univ_filter_dict),
+        x=metrics_x,
+        y=metrics_y,
+        color=group_var,
+        hover_name='Description',
+        size='Market Capitalization',
+    )
+
+    fig.update_layout(
+        #title_text="<b>Sector Weights of iShares ETFs</b>",  # Title in bold
+        #title_x=0,  # Align title to center
+        autosize=True,  # The graph will resize itself to the size of the container
+        height=600, width=900  # You can adjust the height to your preference
+    )
+
+    st.plotly_chart(fig)
 
 
 

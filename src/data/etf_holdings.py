@@ -1,3 +1,4 @@
+import logging
 import os
 import datetime
 from pathlib import Path
@@ -57,7 +58,10 @@ def cache_etf_holdings(tic, spec):
 def cache_all_etf():
     etf_dfs = []
     for tic, spec in tqdm(ishares_etf_url_spec.items()):
-        etf_dfs.append(cache_etf_holdings(tic,spec))
+        try:
+            etf_dfs.append(cache_etf_holdings(tic,spec))
+        except:
+            logging.CRITICAL(f"Failed to cache ETF holdings for {tic}")
     etf_dfs = pd.concat(etf_dfs, sort=True)
     as_of_date = etf_dfs.as_of_date.values[0]
     etf_dfs.to_parquet(ETF_CACHE_DIR/f'ishares_holdings_{as_of_date}.parquet')
