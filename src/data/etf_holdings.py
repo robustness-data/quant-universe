@@ -29,7 +29,8 @@ ishares_etf_url_spec = {
     'usmv': ['239695','ishares-msci-usa-minimum-volatility-etf','USMV_holdings'],
     'iqlt': ['271540','ishares-msci-international-developed-quality-factor-etf','IQLT_holdings'],
     'hdv': ['239563','ishares-high-dividend-etf','HDV_holdings'],
-    'iyr': ['239520','ishares-us-real-estate-etf','IYR_holdings']
+    'iyr': ['239520','ishares-us-real-estate-etf','IYR_holdings'],
+    'efa': ['239623','ishares-msci-eafe-etf','EFA_holdings']
 }
 
 
