@@ -28,13 +28,15 @@ from sqlalchemy import inspect
 from sqlalchemy import select
 from sqlalchemy import text
 from sqlalchemy import update
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
+
+import config as cfg
 
 
 class DBManager:
 
-    def __init__(self) -> None:
+    def __init__(self, db_name: str = 'test_db') -> None:
+        self.db_name = db_name
         self.engine = None
         self.connection = None
         self.metadata = None
@@ -49,6 +51,7 @@ class DBManager:
             'object': String,
             'datetime64[ns]': DateTime,
         }
+        self.create_db(cfg.DB_DIR/db_name)
 
     def create_db(self, db_name: str) -> None:
         """
@@ -276,7 +279,7 @@ class DBManager:
 if __name__ == "__main__":
     def test_create_db():
         db_manager = DBManager()
-        db_manager.create_db("test_db")
+        db_manager.create_db(cfg.DB_DIR/'test_db')
         assert db_manager.engine != None
         assert db_manager.connection != None
         assert db_manager.metadata != None
@@ -488,7 +491,7 @@ if __name__ == "__main__":
 
     # run all test cases
     test_drop_db()
-    #test_create_db(); print("test_create_db passed")
+    test_create_db(); print("test_create_db passed")
     #test_create_table(); print("test_create_table passed")
     #test_create_table_from_df(); print("test_create_table_from_df passed")
     #test_insert_data(); print("test_insert_data passed")
