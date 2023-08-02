@@ -11,9 +11,9 @@
 
 # Path: src/data/db_manager.py
 
+import os, sys, logging
+from pathlib import Path
 
-import os
-import sys
 
 import pandas as pd
 from sqlalchemy import Column
@@ -29,8 +29,6 @@ from sqlalchemy import select
 from sqlalchemy import text
 from sqlalchemy import update
 from sqlalchemy.orm import sessionmaker, declarative_base
-
-import config as cfg
 
 
 class DBManager:
@@ -51,7 +49,7 @@ class DBManager:
             'object': String,
             'datetime64[ns]': DateTime,
         }
-        self.create_db(cfg.DB_DIR/db_name)
+        self.create_db(db_name)
 
     def create_db(self, db_name: str) -> None:
         """
@@ -60,6 +58,7 @@ class DBManager:
         try:
             self.engine = create_engine(f"sqlite:///{db_name}.db", echo=True)
             self.connection = self.engine.connect()
+            self.cursor = self.engine.raw_connection().cursor()
             self.metadata = MetaData()
             self.session = sessionmaker(bind=self.engine)()
             self.base = declarative_base()
@@ -71,6 +70,13 @@ class DBManager:
             print(f"Error: {e}")
             sys.exit(1)
 
+    def refresh_tables(self) -> None:
+        """
+        Refresh the tables
+        """
+        self.tables = self.metadata.tables
+        self.table_names = self.metadata.tables.keys()
+
     def create_table(self, table_name: str, columns: list) -> None:
         """
         Create a table
@@ -78,6 +84,7 @@ class DBManager:
         try:
             table = Table(table_name, self.metadata, *columns)
             table.create(self.engine, checkfirst=True)
+            self.refresh_tables()
             print(f"Table {table_name} created successfully")
         except exc.SQLAlchemyError as e:
             print(f"Error: {e}")
@@ -95,6 +102,7 @@ class DBManager:
             # Create the table
             table = Table(table_name, self.metadata, *columns)
             table.create(self.engine, checkfirst=True)
+            self.refresh_tables()
             print(f"Table {table_name} created successfully from df.")
         except exc.SQLAlchemyError as e:
             print(f"Error: {e}")
@@ -128,6 +136,7 @@ class DBManager:
                 print(f"Table {table_name} does not exist. Creating table {table_name}...")
                 table = Table(table_name, self.metadata, *columns)
                 table.create(self.engine, checkfirst=True)
+                self.refresh_tables()
 
             # Insert the data
             query = insert(table)
@@ -273,13 +282,26 @@ class DBManager:
             sys.exit(1)
 
 
-# can you write a test script to test the above class?
-# Path: src/data/db_manager_test.py
+class TradingViewDB(DBManager):
+
+    def __init__(self, db_name: str = 'tradingview') -> None:
+        super().__init__(db_name)
+        self.create_universe_table()
+
+    def create_universe_table(self, EQ_CACHE_DIR):
+        universe_setup_df = pd.read_csv(EQ_CACHE_DIR/'3_fundamental'/'raw'/'_db_setup_universe.csv')
+        self.create_table_from_df('universe', universe_setup_df)
+
 
 if __name__ == "__main__":
+
+    test_tv = TradingViewDB()
+
+    print("Here")
+    #print(test_tv.query_data_into_df('universe', ['*']))
+
     def test_create_db():
-        db_manager = DBManager()
-        db_manager.create_db(cfg.DB_DIR/'test_db')
+        db_manager = DBManager('test_db')
         assert db_manager.engine != None
         assert db_manager.connection != None
         assert db_manager.metadata != None
@@ -291,8 +313,7 @@ if __name__ == "__main__":
 
 
     def test_create_table():
-        db_manager = DBManager()
-        db_manager.create_db("test_db")
+        db_manager = DBManager("test_db")
         db_manager.create_table("test_table", [
             Column("id", Integer, primary_key=True),
             Column("name", String),
@@ -302,8 +323,7 @@ if __name__ == "__main__":
 
 
     def test_create_table_from_df():
-        db_manager = DBManager()
-        db_manager.create_db("test_db")
+        db_manager = DBManager('test_db')
         df = pd.DataFrame({
             "id": [1, 2, 3],
             "name": ["Tom", "Jerry", "Spike"],
@@ -318,8 +338,7 @@ if __name__ == "__main__":
 
 
     def test_insert_data():
-        db_manager = DBManager()
-        db_manager.create_db("test_db")
+        db_manager = DBManager("test_db")
         db_manager.create_table("test_table", [
             Column("id", Integer, primary_key=True),
             Column("name", String),
