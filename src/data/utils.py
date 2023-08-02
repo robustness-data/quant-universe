@@ -19,8 +19,6 @@ def universe_filter(df, filter_dict):
 def plot_candlestick_chart(df):
         
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03, ratio_y=0.8)
-
-    # Add candlestick chart
     fig.add_trace(
         go.Candlestick(
             x=df['Date'], 
@@ -31,7 +29,6 @@ def plot_candlestick_chart(df):
         row=1, col=1
     )
 
-    # Volume Bar chart
     fig.add_trace(go.Bar(x=df['Date'], y=df['Volume']), row=2, col=1)
 
     # Date slider
@@ -47,8 +44,6 @@ def plot_candlestick_chart(df):
 def plot_ohlc_chart(df):
     
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03)
-
-    # Add candlestick chart
     fig.add_trace(
         go.Ohlc(
             x=df['Date'], 
@@ -58,16 +53,9 @@ def plot_ohlc_chart(df):
             close=df['Close']), 
         row=1, col=1
     )
-
-    # Volume Bar chart
     fig.add_trace(go.Bar(x=df['Date'], y=df['Volume']), row=2, col=1)
-
-    # Date slider
     fig.update_xaxes(rangeslider_visible=True)
-
-    # Update layout
-    fig.update_layout(title="Historical Price", yaxis_title='Price',
-                    yaxis2_title='Volume')
+    fig.update_layout(title="Historical Price", yaxis_title='Price', yaxis2_title='Volume')
 
     return fig
 
@@ -76,19 +64,10 @@ def plot_ohlc_chart(df):
 def plot_line_chart(df):
         
     fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.03)
-
-    # Add candlestick chart
     fig.add_trace(
         go.Scatter(x=df['Date'], y=df['Close'], mode='lines'), row=1, col=1)
-
-    # Volume Bar chart
     fig.add_trace(go.Bar(x=df['Date'], y=df['Volume']), row=2, col=1)
-
-    # Date slider
-    fig.update_xaxes(rangeslider_visible=True)
-
-    # Update layout
-    fig.update_layout(title="Historical Price", yaxis_title='Price',
-                    yaxis2_title='Volume')
+    #fig.update_xaxes(rangeslider_visible=True)
+    fig.update_layout(title="Historical Price", yaxis_title='Price', yaxis2_title='Volume')
 
     return fig

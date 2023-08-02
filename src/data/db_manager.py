@@ -12,13 +12,17 @@
 # Path: src/data/db_manager.py
 
 import os, sys, logging
-from pathlib import Path
-
-
+logger = logging.getLogger('db_manager')
 import pandas as pd
+from pathlib import Path
+ROOT_DIR = Path(__file__).parent.parent.parent
+EQ_CACHE_DIR = ROOT_DIR/'data'/'equity_market'
+DB_DIR = ROOT_DIR / 'database'
+
 from sqlalchemy import Column
 from sqlalchemy import Integer, String, Float, DateTime
 from sqlalchemy import MetaData
+from sqlalchemy import PrimaryKeyConstraint
 from sqlalchemy import Table
 from sqlalchemy import create_engine
 from sqlalchemy import delete
@@ -33,8 +37,9 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 class DBManager:
 
-    def __init__(self, db_name: str = 'test_db') -> None:
+    def __init__(self, db_name: str = 'test_db', echo=False) -> None:
         self.db_name = db_name
+        self.echo = echo
         self.engine = None
         self.connection = None
         self.metadata = None
@@ -44,30 +49,35 @@ class DBManager:
         self.table_names = None
         self.inspector = None
         self.dtype_map = {
+            'int': Integer,
             'int64': Integer,
+            'float': Float,
             'float64': Float,
+            'float32': Float,
+            'str': String,
             'object': String,
             'datetime64[ns]': DateTime,
+            'datetime64': DateTime,
+            'datetime': DateTime,
+            'datetime64[ns, America/New_York]': DateTime
         }
-        self.create_db(db_name)
+        self.create_db(str(DB_DIR/db_name))
 
     def create_db(self, db_name: str) -> None:
         """
         Create a database
         """
         try:
-            self.engine = create_engine(f"sqlite:///{db_name}.db", echo=True)
-            self.connection = self.engine.connect()
-            self.cursor = self.engine.raw_connection().cursor()
+            self.engine = create_engine(f"sqlite:///{db_name}.db", echo=self.echo)
             self.metadata = MetaData()
             self.session = sessionmaker(bind=self.engine)()
             self.base = declarative_base()
             self.tables = self.metadata.tables
             self.table_names = self.metadata.tables.keys()
             self.inspector = inspect(self.engine)
-            print(f"Database {db_name} created successfully")
+            logger.info(f"Database {db_name} created successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def refresh_tables(self) -> None:
@@ -77,35 +87,62 @@ class DBManager:
         self.tables = self.metadata.tables
         self.table_names = self.metadata.tables.keys()
 
+    def create_columns(self, columns: list) -> list:
+        """
+        Create a list of column objects from a list of tuples
+        :param columns: a list of tuples, each tuple contains the column name, dtype, and whether it is an index
+        :return: a list of column objects
+        """
+
+        columns = [Column(name, self.dtype_map[str(dtype)], index=is_index) for name, dtype, is_index in columns]
+        return columns
+
     def create_table(self, table_name: str, columns: list) -> None:
         """
         Create a table
         """
         try:
+            if table_name in self.table_names:
+                logger.warning(f"Table {table_name} already exists.")
+                return
             table = Table(table_name, self.metadata, *columns)
-            table.create(self.engine, checkfirst=True)
+            with self.engine.begin() as connection:
+                table.create(connection, checkfirst=True)
             self.refresh_tables()
-            print(f"Table {table_name} created successfully")
+            logger.info(f"Table {table_name} created successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
-    def create_table_from_df(self, table_name: str, df: pd.DataFrame) -> None:
+    def create_table_from_df(self, table_name: str, df: pd.DataFrame, primary_keys: list = None) -> None:
         """
         Create a table from a dataframe
+        :parameter
+        :param table_name: the name of the table
+        :param df: the dataframe
+        :param primary_keys: a list of primary keys
         """
         try:
+            if table_name in self.table_names:
+                logger.warning(f"Table {table_name} already exists.")
+                return
+
             # Generate a list of columns based on the dataframe's dtypes
-            columns = [Column(name, self.dtype_map[str(dtype)], index=is_index)
-                       for name, dtype, is_index in zip(df.columns, df.dtypes, df.columns.isin(df.index.names))]
+            columns = [Column(name, self.dtype_map[str(dtype)]) for name, dtype in zip(df.columns, df.dtypes)]
 
             # Create the table
-            table = Table(table_name, self.metadata, *columns)
-            table.create(self.engine, checkfirst=True)
+            if primary_keys:
+                table = Table(table_name, self.metadata, *columns, PrimaryKeyConstraint(*primary_keys))
+            else:
+                table = Table(table_name, self.metadata, *columns)
+
+            with self.engine.begin() as connection:
+                table.create(connection, checkfirst=True)
+
             self.refresh_tables()
-            print(f"Table {table_name} created successfully from df.")
+            logger.info(f"Table {table_name} created successfully from df.")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def insert_data(self, table_name: str, data: list) -> None:
@@ -115,10 +152,11 @@ class DBManager:
         try:
             table = self.tables[table_name]
             query = insert(table)
-            self.connection.execute(query, data)
-            print(f"Data inserted into table {table_name} successfully")
+            with self.engine.begin() as connection:
+                connection.execute(query, data)
+            logger.info(f"Data inserted into table {table_name} successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def insert_data_from_df(self, table_name: str, df: pd.DataFrame) -> None:
@@ -127,24 +165,16 @@ class DBManager:
         """
         try:
             # Create the table
-            if table_name in self.table_names:
-                table = self.tables[table_name]
-            else:
-                # Generate a list of columns based on the dataframe's dtypes
-                columns = [Column(name, self.dtype_map[str(dtype)], index=is_index)
-                           for name, dtype, is_index in zip(df.columns, df.dtypes, df.columns.isin(df.index.names))]
-                print(f"Table {table_name} does not exist. Creating table {table_name}...")
-                table = Table(table_name, self.metadata, *columns)
-                table.create(self.engine, checkfirst=True)
-                self.refresh_tables()
-
-            # Insert the data
+            if table_name not in self.table_names:
+                self.create_table_from_df(table_name, df)
+            table = self.tables[table_name]
             query = insert(table)
-            self.connection.execute(query, df.to_dict(orient="records"))
-            print(f"Data inserted into table {table_name} successfully")
+            with self.engine.begin() as connection:
+                connection.execute(query, df.to_dict(orient="records"))
+            logger.info(f"Data inserted into table {table_name} successfully")
 
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def query_data(self, table_name: str, columns: list, where: str = None, order_by: str = None) -> list:
@@ -152,16 +182,26 @@ class DBManager:
         Query data from a table
         """
         try:
+            if table_name not in self.tables:
+                raise Warning(f"Table {table_name} does not exist!")
+                sys.exit(1)
             table = self.tables[table_name]
+
+            # prepare query
             query = select(text(",".join(columns))).select_from(table)
             if where:
                 query = query.where(text(where))
             if order_by:
                 query = query.order_by(text(order_by))
-            result = self.connection.execute(query).fetchall()
+
+            # run query and get results
+            with self.engine.begin() as connection:
+                result = connection.execute(query).fetchall()
+
             return result
+
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def query_data_into_df(self, table_name: str, columns: list, where: str = None, order_by: str = None) -> pd.DataFrame:
@@ -173,7 +213,7 @@ class DBManager:
             df = pd.DataFrame(result)
             return df
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def update_data(self, table_name: str, set: str, where: str = None) -> None:
@@ -185,10 +225,11 @@ class DBManager:
             query = update(table).values(text(set))
             if where:
                 query = query.where(text(where))
-            self.connection.execute(query)
-            print(f"Data updated in table {table_name} successfully")
+            with self.engine.begin() as connection:
+                connection.execute(query)
+            logger.info(f"Data updated in table {table_name} successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def delete_data(self, table_name: str, where: str = None) -> None:
@@ -201,10 +242,11 @@ class DBManager:
             query = delete(table)
             if where:
                 query = query.where(text(where))
-            self.connection.execute(query)
-            print(f"Data deleted in table {table_name} successfully")
+            with self.engine.begin() as connection:
+                connection.execute(query)
+            logger.info(f"Data deleted in table {table_name} successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def drop_table(self, table_name: str) -> None:
@@ -214,33 +256,24 @@ class DBManager:
         try:
             table = self.tables[table_name]
             table.drop(self.engine)
-            print(f"Table {table_name} dropped successfully")
+            with self.engine.begin() as connection:
+                table.drop(connection)
+            logger.info(f"Table {table_name} dropped successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
-    def close_connection(self) -> None:
-
-        """
-        Close the database connection
-        """
-        try:
-            self.connection.close()
-            print("Connection closed successfully")
-        except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-    def drop_db(self, db_name: str) -> None:
+    @staticmethod
+    def drop_db(db_name: str) -> None:
 
         """
         Drop the database
         """
         try:
-            os.remove(f"{db_name}.db")
-            print(f"Database {db_name} dropped successfully")
+            os.remove(f"{str(DB_DIR/db_name)}.db")
+            logger.info(f"Database {db_name} dropped successfully")
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def create_db_from_csv(self, db_name: str, table_name: str, csv_path: str, columns: list) -> None:
@@ -253,7 +286,7 @@ class DBManager:
             df = pd.read_csv(csv_path)
             self.insert_data_from_df(table_name, df)
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
     def create_table_from_csv(self, table_name: str, csv_path: str, columns: list) -> None:
@@ -266,19 +299,7 @@ class DBManager:
             df = pd.read_csv(csv_path)
             self.insert_data_from_df(table_name, df)
         except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
-            sys.exit(1)
-
-    def update_table_from_csv(self, table_name: str, csv_path: str, columns: list) -> None:
-
-        """
-        Update a table from a csv file
-        """
-        try:
-            df = pd.read_csv(csv_path)
-            self.insert_data_from_df(table_name, df)
-        except exc.SQLAlchemyError as e:
-            print(f"Error: {e}")
+            logger.info(f"Error: {e}")
             sys.exit(1)
 
 
@@ -288,17 +309,20 @@ class TradingViewDB(DBManager):
         super().__init__(db_name)
         self.create_universe_table()
 
-    def create_universe_table(self, EQ_CACHE_DIR):
+    def create_universe_table(self):
         universe_setup_df = pd.read_csv(EQ_CACHE_DIR/'3_fundamental'/'raw'/'_db_setup_universe.csv')
         self.create_table_from_df('universe', universe_setup_df)
+
+    def populate_universe_table(self, universe_df: pd.DataFrame, universe_name:str):
+        self.insert_data_from_df(table_name='universe', df=universe_df.assign(Universe=universe_name) )
 
 
 if __name__ == "__main__":
 
     test_tv = TradingViewDB()
 
-    print("Here")
-    #print(test_tv.query_data_into_df('universe', ['*']))
+    logger.info("Here")
+    logger.info(test_tv.query_data_into_df('universe', ['*']).columns)
 
     def test_create_db():
         db_manager = DBManager('test_db')
@@ -330,11 +354,11 @@ if __name__ == "__main__":
             "age": [10, 20, 30]
         })
         db_manager.create_table_from_df("test_table", df)
-        print(db_manager.table_names)
-        print(db_manager.metadata.tables.keys())
+        logger.info(db_manager.table_names)
+        logger.info(db_manager.metadata.tables.keys())
         assert "test_table" in db_manager.table_names
 
-        print(db_manager.query_data("test_table", ['id','age']))
+        logger.info(db_manager.query_data("test_table", ['id','age']))
 
 
     def test_insert_data():
@@ -351,7 +375,7 @@ if __name__ == "__main__":
         ])
         result = db_manager.query_data("test_table", ["*"])
         assert len(result) == 3
-        print(result)
+        logger.info(result)
 
 
     def test_insert_data_from_df():
@@ -387,7 +411,7 @@ if __name__ == "__main__":
         ])
         result = db_manager.query_data("test_table", ["*"])
         assert len(result) == 3
-        print(pd.DataFrame(result, columns=["id", "name", "age"]))
+        logger.info(pd.DataFrame(result, columns=["id", "name", "age"]))
 
 
     def test_query_data_into_df():
@@ -405,7 +429,7 @@ if __name__ == "__main__":
         ])
         result = db_manager.query_data_into_df("test_table", ["*"])
         assert len(result) == 3
-        print(result)
+        logger.info(result)
 
 
     def test_update_data():
@@ -509,23 +533,23 @@ if __name__ == "__main__":
 
 
     # run all test cases
-    test_drop_db()
-    test_create_db(); print("test_create_db passed")
-    #test_create_table(); print("test_create_table passed")
-    #test_create_table_from_df(); print("test_create_table_from_df passed")
-    #test_insert_data(); print("test_insert_data passed")
-    #test_insert_data_from_df(); print("test_insert_data_from_df passed")
-    #test_query_data(); print("test_query_data passed")
+    #test_drop_db()
+    #test_create_db(); logger.info("test_create_db passed")
+    #test_create_table(); logger.info("test_create_table passed")
+    #test_create_table_from_df(); logger.info("test_create_table_from_df passed")
+    #test_insert_data(); logger.info("test_insert_data passed")
+    #test_insert_data_from_df(); logger.info("test_insert_data_from_df passed")
+    #test_query_data(); logger.info("test_query_data passed")
     #test_query_data_into_df()
 
-    # test_update_data(); print("test_update_data passed")
-    # test_delete_data(); print("test_delete_data passed")
-    # test_drop_table(); print("test_drop_table passed")
-    # test_close_connection(); print("test_close_connection passed")
-    # test_drop_db(); print("test_drop_db passed")
-    # test_create_db_from_csv(); print("test_create_db_from_csv passed")
-    # test_create_table_from_csv(); print("test_create_table_from_csv passed")
-    # test_update_table_from_csv(); print("test_update_table_from_csv passed")
-    # print("All test cases passed")
+    # test_update_data(); logger.info("test_update_data passed")
+    # test_delete_data(); logger.info("test_delete_data passed")
+    # test_drop_table(); logger.info("test_drop_table passed")
+    # test_close_connection(); logger.info("test_close_connection passed")
+    # test_drop_db(); logger.info("test_drop_db passed")
+    # test_create_db_from_csv(); logger.info("test_create_db_from_csv passed")
+    # test_create_table_from_csv(); logger.info("test_create_table_from_csv passed")
+    # test_update_table_from_csv(); logger.info("test_update_table_from_csv passed")
+    # logger.info("All test cases passed")
 
-    test_drop_db()
+    #test_drop_db()
