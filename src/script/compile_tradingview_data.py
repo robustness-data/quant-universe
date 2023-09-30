@@ -18,10 +18,10 @@ def compile_tradingview_data():
 
     data_list = []
     for f in tqdm(file_list, desc="Compiling TradingView data ..."):
-        #print("Reading %s ...", f)
-        index, as_of_date = f.replace('.csv','').split('_')
+
+        index, as_of_date = f.replace('.csv', '').split('_')
         try:
-            data_df = pd.read_csv(CACHE_DIR/'raw'/f).assign(index_name=index).assign(as_of_date=as_of_date)
+            data_df = pd.read_csv(CACHE_DIR/'raw'/f).assign(Universe=index).assign(Date=as_of_date)
             data_list.append(data_df)
             del data_df
         except Exception as e:
