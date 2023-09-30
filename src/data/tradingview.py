@@ -1,21 +1,15 @@
-import os, sys
-from pathlib import Path
-import datetime
-import itertools
-from tqdm import tqdm
 import pandas as pd
-import streamlit as st
-from src.data.db_manager import TradingViewDB
 import src.config as cfg
+from src.data.db_manager import TradingViewDB
 
 import logging
 logger = logging.getLogger(__name__)
 
 
-univ_names_renamer = {
+tv_names_renamer = {
     'US All Universe': 'us',
     'NASDAQ Composite': 'nasdaq-composite',
-    'NASDAQ 100': 'nasdaq-100',
+    'NASDAQ 100': 'ndx',
     'NASDAQ Golden Dragon China': 'nasdaq-china',
     'NASDAQ Biotech': 'nasdaq-biotech',
     'S&P 500': 'sp500',
@@ -115,59 +109,29 @@ category_dict = {
 }
 
 
-class TradingViewFundamental:
+class TradingView:
 
     def __init__(self):
-        self.universe_db = TradingViewDB()
-        #self.load_stock_universe_data()
-        #self.univ_names_renamer = univ_names_renamer
-        #self.category_dict = category_dict
-        pass
+        self.database = TradingViewDB()
+        self.data_df = pd.read_parquet(cfg.EQ_CACHE_DIR / '3_fundamental' / 'tradingview_data.parquet')
+        self.renamer = tv_names_renamer
+        self.category_dict = category_dict
 
-    def get_universe_meta(self, universe_df):
-        self.univ_names = universe_df.Universe.unique().tolist()
-        self.univ_dates = universe_df.Date.unique().tolist()
-        self.univ_fundamentals=universe_df.columns.tolist()
-        self.sector_names=universe_df.Sector.sort_values().unique().tolist()
-        self.industry_names=universe_df.Industry.sort_values().unique().tolist()
-        self.sector_industry_map = universe_df.groupby(['Sector']).apply(lambda x: x.Industry.unique().tolist()).to_dict()
-        self.universe_df = universe_df
-
-    def write_universe_to_db(self):
-    
-        for f in tqdm(os.listdir(cfg.CACHE_DIR/'raw'), desc="Writing TradingView stock universe to database"):
-            print(f)
-            index, as_of_date = f.replace('.csv','').split('_')
-            univ_df = pd.read_csv(cfg.CACHE_DIR / 'raw' / f).assign(Universe=index).assign(Date=as_of_date)
-            self.universe_db.
-            #for i, row in univ_df.iterrows():
-            #    universe_db.create_table_and_insert_data('tv_universe', row.to_dict())
-            del univ_df
-
-        universe_db.close_connection()
-
-    def load_universe_from_db(self):    
-        return pd.read_sql('select TOP (100) * from tv_universe', TradingViewDB('equity_universe.db', cfg.DB_DIR).conn)
-
-    def load_universe_from_csv(self):
-
-        univ_list = []
-        for f in os.listdir(cfg.CACHE_DIR/'raw'):
-            print(f)
-            index, as_of_date = f.replace('.csv','').split('_')
-            try:
-                univ_df = pd.read_csv(cfg.CACHE_DIR/'raw'/f, on_bad_lines='warn').assign(Universe=index).assign(Date=as_of_date)
-                univ_list.append(univ_df)
-                del univ_df
-            except Exception as e:
-                logging.error(f'Error in reading {f}: {e}')
-        universe_df = pd.concat(univ_list)
-        universe_df = universe_df.dropna(subset='Market Capitalization')
+        self.universe_list = self.data_df.Universe.unique().tolist()
+        self.dates = self.data_df.Date.unique().tolist()
+        self.varnames = self.data_df.columns.tolist()
+        self.sector_names = self.data_df.Sector.sort_values().unique().tolist()
+        self.industry_names = self.data_df.Industry.sort_values().unique().tolist()
+        self.sector_industry_map = self.data_df.groupby(['Sector']).apply(lambda x: x.Industry.unique().tolist()).to_dict()
 
 
 if __name__ == "__main__":
 
+    tv = TradingView()
 
-    tv_fund = TradingViewFundamental()
-    tv_fund.write_universe_to_db()
-    print(tv_fund.load_universe_from_db().to_string())
+    print(tv.universe_list)
+    print(tv.dates)
+    print(tv.varnames)
+    print(tv.sector_names)
+    print(tv.industry_names)
+    print(tv.sector_industry_map)
