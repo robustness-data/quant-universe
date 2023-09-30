@@ -1,6 +1,8 @@
 import logging
 import os
 import datetime
+import time
+import random
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
@@ -23,6 +25,19 @@ def get_ishares_url(base_url, etf_id, etf_name, filename):
     return ishares_url
 
 
+def convert_to_float(x):
+    if isinstance(x, float):
+        return x
+    elif isinstance(x, int):
+        return float(x)
+    elif isinstance(x, str):
+        try:
+            return float(x.replace(',',''))
+        except:
+            return x
+            print(x)
+
+
 def cache_etf_holdings(spec):
     tic, etf_id, etf_name, filename = spec
     holdings_url = get_ishares_url(base_url, etf_id, etf_name, filename)
@@ -37,6 +52,8 @@ def cache_etf_holdings(spec):
         .assign(Price=lambda x: x['Price'].astype(str))
         .dropna(subset=['Market Value'])
     )
+    for c in ['Market Value', 'Weight (%)', 'Notional Value', 'Shares', 'Price', 'FX Rate']:
+        holdings[c] = holdings[c].apply(convert_to_float)
     return holdings
 
 
@@ -50,14 +67,23 @@ def cache_etf_by_group(etf_url_meta_file):
         except:
             logging.CRITICAL(f"Failed to cache ETF holdings for {etf_url_meta_file}")
     etf_dfs = pd.concat(etf_dfs, sort=True)
-    etf_dfs.dropna(subset=['Asset Name'], inplace=True)
     return etf_dfs
 
 
 def cache_all_etf():
-    etf_dfs = []
+    etf_meta = []
     for f in os.listdir(ETF_META_DIR):
-        etf_dfs.append(cache_etf_by_group(f))
+        etf_meta.append(pd.read_csv(ETF_META_DIR/f))
+    etf_meta = pd.concat(etf_meta)
+    print(etf_meta.shape)
+    etf_meta.drop_duplicates(inplace=True)
+    print(etf_meta.shape)
+    etf_dfs=[]
+    for i, row in tqdm(etf_meta.iterrows(), total=etf_meta.shape[0], desc=f'Caching ETFs'):
+        print(f"Caching {row['ticker']}")
+        spec = (row['ticker'], row['etf-id'], row['etf_name'], row['file_name'])
+        etf_dfs.append(cache_etf_holdings(spec))
+        time.sleep((1+5*random.random())*0.5)
     etf_dfs = pd.concat(etf_dfs)
     as_of_date = etf_dfs.as_of_date.values[0]
     etf_dfs.to_parquet(ETF_CACHE_DIR/f'ishares_holdings_{as_of_date}.parquet')
@@ -85,5 +111,6 @@ def compile_etf_holdings():
 
 if __name__ == '__main__':
 
-    etf_holdings_df = cache_all_etf()
+    cache_all_etf()
     compile_etf_holdings()
+
