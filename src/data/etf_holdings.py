@@ -7,6 +7,7 @@ import pandas as pd
 
 
 ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'equity_market'/'1_etf'
+ETF_META_DIR=ETF_CACHE_DIR/'meta'
 print(ETF_CACHE_DIR)
 if not os.path.exists(ETF_CACHE_DIR):
     print('Creating ETF cache directory')
@@ -14,24 +15,6 @@ if not os.path.exists(ETF_CACHE_DIR):
 
 
 base_url = 'https://www.ishares.com/us/products'
-ishares_etf_url_spec = {
-    'ivv': ['239726','ishares-core-sp-500-etf','IVV_holdings'],
-    'iwm': ['239710','ishares-russell-2000-etf','IWM_holdings'],
-    'iwb': ['239707','ishares-russell-1000-etf','IWB_holdings'],
-    'iwb': ['239707','ishares-russell-1000-etf','IWB_holdings'],
-    'ivw': ['239725','ishares-sp-500-growth-etf','IVW_holdings'],
-    'iwo': ['239709','ishares-russell-2000-growth-etf','IWO_holdings'],
-    'iwn': ['239712','ishares-russell-2000-value-etf','IWN_holdings'],
-    'iwd': ['239708','ishares-russell-1000-value-etf','IWD_holdings'],
-    'iwf': ['239706','ishares-russell-1000-growth-etf','IWF_holdings'],
-    'ijr': ['239774','ishares-core-sp-smallcap-etf','IJR_holdings'],
-    'qual': ['256101','ishares-msci-usa-quality-factor-etf','QUAL_holdings'],
-    'usmv': ['239695','ishares-msci-usa-minimum-volatility-etf','USMV_holdings'],
-    'iqlt': ['271540','ishares-msci-international-developed-quality-factor-etf','IQLT_holdings'],
-    'hdv': ['239563','ishares-high-dividend-etf','HDV_holdings'],
-    'iyr': ['239520','ishares-us-real-estate-etf','IYR_holdings'],
-    'efa': ['239623','ishares-msci-eafe-etf','EFA_holdings']
-}
 
 
 def get_ishares_url(base_url, etf_id, etf_name, filename):
@@ -40,8 +23,8 @@ def get_ishares_url(base_url, etf_id, etf_name, filename):
     return ishares_url
 
 
-def cache_etf_holdings(tic, spec):
-    etf_id, etf_name, filename = spec
+def cache_etf_holdings(spec):
+    tic, etf_id, etf_name, filename = spec
     holdings_url = get_ishares_url(base_url, etf_id, etf_name, filename)
     etf_display_name = pd.read_csv(holdings_url, nrows=1, header=None).iloc[0, 0]
     as_of_date_str = pd.read_csv(holdings_url, skiprows=1, nrows=2, header=None).iloc[0, 1]
@@ -52,21 +35,50 @@ def cache_etf_holdings(tic, spec):
         .assign(etf_ticker=tic)
         .assign(as_of_date=as_of_date)
         .assign(Price=lambda x: x['Price'].astype(str))
+        .dropna(subset=['Market Value'])
     )
     return holdings
 
 
+def cache_etf_by_group(etf_url_meta_file):
+    etf_url_df=pd.read_csv(ETF_META_DIR/etf_url_meta_file)
+    etf_dfs = []
+    for i, row in tqdm(etf_url_df.iterrows(), total=etf_url_df.shape[0], desc=f'Caching {etf_url_meta_file}'):
+        try:
+            spec = (row['ticker'], row['etf-id'], row['etf_name'], row['file_name'])
+            etf_dfs.append(cache_etf_holdings(spec))
+        except:
+            logging.CRITICAL(f"Failed to cache ETF holdings for {etf_url_meta_file}")
+    etf_dfs = pd.concat(etf_dfs, sort=True)
+    etf_dfs.dropna(subset=['Asset Name'], inplace=True)
+    return etf_dfs
+
+
 def cache_all_etf():
     etf_dfs = []
-    for tic, spec in tqdm(ishares_etf_url_spec.items()):
-        try:
-            etf_dfs.append(cache_etf_holdings(tic,spec))
-        except:
-            logging.CRITICAL(f"Failed to cache ETF holdings for {tic}")
-    etf_dfs = pd.concat(etf_dfs, sort=True)
+    for f in os.listdir(ETF_META_DIR):
+        etf_dfs.append(cache_etf_by_group(f))
+    etf_dfs = pd.concat(etf_dfs)
     as_of_date = etf_dfs.as_of_date.values[0]
     etf_dfs.to_parquet(ETF_CACHE_DIR/f'ishares_holdings_{as_of_date}.parquet')
-    etf_dfs.to_csv(ETF_CACHE_DIR/f'ishares_holdings_{as_of_date}.csv',index=False)
+    etf_dfs.to_csv(ETF_CACHE_DIR/f'ishares_holdings_{as_of_date}.csv', index=False)
+
+    return etf_dfs
+
+
+# compile all ETF holdings parquet file and csv files into one, separately
+def compile_etf_holdings():
+    files=os.listdir(ETF_CACHE_DIR)
+    parquet_files=[f for f in files if '.parquet' in f]
+    csv_files=[f for f in files if '.csv' in f]
+    parquet_files.sort()
+    csv_files.sort()
+    etf_dfs = []
+    for f in parquet_files:
+        etf_dfs.append(pd.read_parquet(ETF_CACHE_DIR/f))
+    etf_dfs = pd.concat(etf_dfs, sort=True)
+    etf_dfs.to_parquet(ETF_CACHE_DIR/f'ishares_holdings.parquet')
+    etf_dfs.to_csv(ETF_CACHE_DIR/f'ishares_holdings.csv', index=False)
 
     return etf_dfs
 
@@ -74,3 +86,4 @@ def cache_all_etf():
 if __name__ == '__main__':
 
     etf_holdings_df = cache_all_etf()
+    compile_etf_holdings()
