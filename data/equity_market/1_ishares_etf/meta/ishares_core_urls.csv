@@ -1,0 +1,16 @@
+ticker,etf-id,etf_name,file_name
+ivv,239726,ishares-core-sp-500-etf,IVV_holdings
+iefa,244049,ishares-core-msci-eafe-etf,IEFA_holdings
+ijh,239763,ishares-core-sp-midcap-etf,IJH_holdings
+iemg,244050,ishares-core-msci-emerging-markets-etf,IEMG_holdings
+ijr,239774,ishares-core-sp-smallcap-etf,IJR_holdings
+itot,239724,ishares-core-sp-total-us-stock-market-etf,ITOT_holdings
+ixus,244048,ishares-core-msci-total-international-stock-etf,IXUS_holdings
+dgro,264623,ishares-core-dividend-growth-etf,DGRO_holdings
+iusg,239713,ishares-core-sp-us-growth-etf,IUSG_holdings
+iusv,239715,ishares-core-sp-us-value-etf,IUSV_holdings
+idev,286762,ishares-core-msci-international-developed-markets-etf,IDEV_holdings
+hdv,239563,ishares-high-dividend-etf,HDV_holdings
+ieur,264617,ishares-core-msci-europe-etf,IEUR_holdings
+ipac,264619,ishares-core-msci-pacific-etf,IPAC_holdings
+divb,291387,ishares-core-dividend-etf,DIVB_holdings
