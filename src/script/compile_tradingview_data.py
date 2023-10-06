@@ -15,10 +15,8 @@ def compile_tradingview_data():
     file_list = [f for f in os.listdir(CACHE_DIR/'raw') if '.csv' in f]
     file_list.sort()
     file_list.remove('_db_setup_universe.csv')
-
     data_list = []
     for f in tqdm(file_list, desc="Compiling TradingView data ..."):
-
         index, as_of_date = f.replace('.csv', '').split('_')
         try:
             data_df = pd.read_csv(CACHE_DIR/'raw'/f).assign(Universe=index).assign(Date=as_of_date)
