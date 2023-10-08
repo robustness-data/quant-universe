@@ -12,7 +12,7 @@ from io import StringIO
 import requests
 
 
-ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'equity_market'/'1_etf'
+ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'equity_market'/'1_ishares_etf'
 ETF_META_DIR=ETF_CACHE_DIR/'meta'
 print(ETF_CACHE_DIR)
 if not os.path.exists(ETF_CACHE_DIR):
