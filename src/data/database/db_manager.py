@@ -15,9 +15,7 @@ import os, sys, logging
 logger = logging.getLogger('db_manager')
 import pandas as pd
 from pathlib import Path
-ROOT_DIR = Path(__file__).parent.parent.parent
-EQ_CACHE_DIR = ROOT_DIR/'data'/'equity_market'
-DB_DIR = ROOT_DIR / 'database'
+import src.config as cfg
 
 from sqlalchemy import Column
 from sqlalchemy import Integer, String, Float, DateTime
@@ -61,7 +59,7 @@ class DBManager:
             'datetime': DateTime,
             'datetime64[ns, America/New_York]': DateTime
         }
-        self.create_db(str(DB_DIR/db_name))
+        self.create_db(str(cfg.DB_DIR/db_name))
 
     def create_db(self, db_name: str) -> None:
         """
@@ -270,7 +268,7 @@ class DBManager:
         Drop the database
         """
         try:
-            os.remove(f"{str(DB_DIR/db_name)}.db")
+            os.remove(f"{str(cfg.DB_DIR/db_name)}.db")
             logger.info(f"Database {db_name} dropped successfully")
         except exc.SQLAlchemyError as e:
             logger.info(f"Error: {e}")
@@ -310,11 +308,11 @@ class TradingViewDB(DBManager):
         self.create_universe_table()
 
     def create_universe_table(self):
-        universe_setup_df = pd.read_csv(EQ_CACHE_DIR/'3_fundamental'/'raw'/'_db_setup_universe.csv')
+        universe_setup_df = pd.read_csv(cfg.TV_CACHE_DIR/'raw'/'_db_setup_universe.csv')
         self.create_table_from_df('universe', universe_setup_df)
 
     def populate_universe_table(self, universe_df: pd.DataFrame, universe_name:str):
-        self.insert_data_from_df(table_name='universe', df=universe_df.assign(Universe=universe_name) )
+        self.insert_data_from_df(table_name='universe', df=universe_df.assign(Universe=universe_name))
 
 
 if __name__ == "__main__":

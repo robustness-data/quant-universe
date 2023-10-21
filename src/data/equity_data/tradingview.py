@@ -113,7 +113,7 @@ class TradingView:
 
     def __init__(self):
         self.database = TradingViewDB()
-        self.data_df = pd.read_parquet(cfg.EQ_CACHE_DIR / '3_fundamental' / 'tradingview_data.parquet')
+        self.data_df = pd.read_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
         self.renamer = tv_names_renamer
         self.category_dict = category_dict
 
@@ -123,6 +123,9 @@ class TradingView:
         self.sector_names = self.data_df.Sector.sort_values().unique().tolist()
         self.industry_names = self.data_df.Industry.sort_values().unique().tolist()
         self.sector_industry_map = self.data_df.groupby(['Sector']).apply(lambda x: x.Industry.unique().tolist()).to_dict()
+
+    def load_available_dates(self):
+        pass
 
 
 if __name__ == "__main__":

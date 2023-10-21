@@ -4,10 +4,8 @@ from tqdm import tqdm
 import pandas as pd
 
 from pathlib import Path
-print(__file__)
-ROOT_DIR=Path(__file__).parent.parent.parent
-CACHE_DIR=ROOT_DIR/'data'/'equity_market'/'3_tradingview'
-print("Cache directory:", CACHE_DIR)
+import src.config as cfg
+print("Cache directory:", cfg.TV_CACHE_DIR)
 
 
 def _read_zip_file(file_name):
@@ -32,12 +30,14 @@ def compile_tradingview_data():
     :return:
     """
 
-    file_list = [f for f in os.listdir(CACHE_DIR/'raw') if '.zip' in f]
+    file_list = [f for f in os.listdir(cfg.TV_CACHE_DIR/'raw') if '.zip' in f]
     file_list.sort()
     data_list = []
     for f in tqdm(file_list, desc="Compiling TradingView data ..."):
-        output = _read_zip_file(CACHE_DIR/'raw'/f)
+        print(f)
+        output = _read_zip_file(cfg.TV_CACHE_DIR/'raw'/f)
         for filename, df in output.items():
+            print(filename.replace('.csv', '').split('_'))
             index, as_of_date = filename.replace('.csv', '').split('_')
             try:
                 data_list.append(df.assign(Universe=index).assign(Date=as_of_date))
@@ -46,7 +46,7 @@ def compile_tradingview_data():
                 print("Failed to append data from %s: %s", filename, e)
     all_data_df = pd.concat(data_list)
     all_data_df = all_data_df.dropna(subset='Market Capitalization')
-    all_data_df.astype(str).to_parquet(CACHE_DIR/'tradingview_data.parquet')
+    all_data_df.astype(str).to_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
 
 
 if __name__ == '__main__':
