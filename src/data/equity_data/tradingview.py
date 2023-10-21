@@ -1,6 +1,6 @@
 import pandas as pd
 import src.config as cfg
-from src.data.db_manager import TradingViewDB
+from data.database.db_manager import TradingViewDB
 
 import logging
 logger = logging.getLogger(__name__)

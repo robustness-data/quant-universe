@@ -1,20 +1,15 @@
-import os, sys, logging
+import sys, logging
 from pathlib import Path
 ROOT_DIR = Path(__file__).parent.parent.parent.parent
 if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
     #sys.path.append(str(ROOT_DIR/'src'))
 
-import src.config as cfg
 import src.data.utils as hp
-from src.data.equity_api_yfinance import Stock
+from data.equity_data.yfinance import Stock
 
-import datetime
-import itertools
-from tqdm import tqdm
 import pandas as pd
 import streamlit as st
-import plotly.express as px
 
 us_universe_df = pd.read_csv(ROOT_DIR/'data'/'equity_market'/'3_fundamental'/'raw'/'us_2023-07-10.csv')
 all_us_tics = us_universe_df.Ticker.unique().tolist()

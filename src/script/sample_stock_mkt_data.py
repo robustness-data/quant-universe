@@ -1,4 +1,4 @@
-import os, sys, logging, time, datetime
+import sys, logging, time, datetime
 from pathlib import Path
 logger = logging.getLogger(__name__)
 
@@ -8,10 +8,9 @@ if str(ROOT_DIR) not in sys.path:
     logging.info(f"Added {str(ROOT_DIR)} to sys.path")
 
 import src.config as cfg
-from src.data.equity_api_yfinance import Stock
-from src.data.db_manager import DBManager
+from data.equity_data.yfinance import Stock
+from data.database.db_manager import DBManager
 from sqlalchemy import Column
-from sqlalchemy import Integer, String, Float, DateTime
 
 import numpy as np
 import pandas as pd

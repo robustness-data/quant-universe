@@ -1,3 +1,4 @@
+
 import io
 import requests
 import csv
@@ -10,6 +11,7 @@ import pandas as pd
 import numpy as np
 
 # TODO: to be cleaned up and refactored into other modules
+
 
 class Stock:
     def __init__(self, ticker):

@@ -1,7 +1,4 @@
-import os, sys
-import datetime
-import itertools
-from tqdm import tqdm
+import sys
 
 from pathlib import Path
 print(__file__)
@@ -9,11 +6,9 @@ ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
 import src.data.utils as hp
-from src.data.tradingview import TradingViewFundamental
 #from src.data.yfinance import Stock, StockUniverse
-from src.data.equity_api_yfinance import Stock
+from data.equity_data.yfinance import Stock
 
-import pandas as pd
 import streamlit as st
 import plotly.express as px
 

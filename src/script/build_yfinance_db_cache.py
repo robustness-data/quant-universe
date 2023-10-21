@@ -9,9 +9,8 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.append(str(ROOT_DIR))
     logging.info(f"Added {str(ROOT_DIR)} to sys.path")
 
-import src.config as cfg
-from src.data.equity_api_yfinance import Stock
-from src.data.db_manager import DBManager
+from data.equity_data.yfinance import Stock
+from data.database.db_manager import DBManager
 
 import pandas as pd
 
