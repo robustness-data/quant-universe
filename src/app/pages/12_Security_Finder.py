@@ -5,9 +5,8 @@ print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-import src.data.utils as hp
-#from src.data.yfinance import Stock, StockUniverse
-from data.equity_data.yfinance import Stock
+from src.utils.plotting_utils import plot_candlestick_chart
+from src.data.equity_data.yfinance import Stock
 
 import streamlit as st
 import plotly.express as px
@@ -44,9 +43,8 @@ with tab_perf:
     fig.update_layout(title='Stock Price', xaxis_title='Date', yaxis_title='Price')
     st.plotly_chart(fig, use_container_width=True)
 
-    cand = hp.plot_candlestick_chart(asset.history(period='1Y', interval='1H'))
+    cand = plot_candlestick_chart(asset.history(period='1Y', interval='1H'))
     st.plotly_chart(cand, use_container_width=True)
-
 
 
 with tab_fin:
@@ -62,11 +60,10 @@ with tab_fin:
     fig.update_layout(title='Financials', xaxis_title='Fiscal Year', yaxis_title='Value')
     st.plotly_chart(fig, use_container_width=True)
 
+
 with tab_earn:
     # replicate the same process for earnings
     st.write(asset.earnings_dates)
-
-
 
 
 # write a function to process the fundamental data and return a long format table

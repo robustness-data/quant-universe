@@ -5,7 +5,7 @@ print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from src.data.utils import universe_filter, set_cols_numeric
+from utils.pandas_utils import df_filter, set_cols_numeric
 from src.data.equity_data.tradingview import TradingView
 from src.data.equity_data.yfinance_old import Stock
 
@@ -70,7 +70,7 @@ with scatter_tab:
 
 
     fig=px.scatter(
-        data_frame=universe_filter(chosen_univ_data, univ_filter_dict),
+        data_frame=df_filter(chosen_univ_data, univ_filter_dict),
         x=metrics_x,
         y=metrics_y,
         color=group_var,

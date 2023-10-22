@@ -1,12 +1,11 @@
 import sys, logging
 from pathlib import Path
-ROOT_DIR = Path(__file__).parent.parent.parent.parent
-if str(ROOT_DIR) not in sys.path:
-    sys.path.append(str(ROOT_DIR))
-    #sys.path.append(str(ROOT_DIR/'src'))
+print(__file__)
+ROOT_DIR=Path(__file__).parent.parent.parent.parent
+sys.path.append(str(ROOT_DIR))
 
-import src.data.utils as hp
-from data.equity_data.yfinance import Stock
+from src.utils.plotting_utils import plot_line_chart
+from src.data.equity_data.yfinance import Stock
 
 import pandas as pd
 import streamlit as st
@@ -48,7 +47,7 @@ with tab_desc:
 with tab_perf:
     st.title("Performance")
     hist_price = asset._history.rename(pd.to_datetime).resample('B').ffill().reset_index()
-    st.plotly_chart(hp.plot_line_chart(hist_price))
+    st.plotly_chart(plot_line_chart(hist_price))
 
 with tab_test:
     st.title("Module Inspector")
