@@ -6,7 +6,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-tv_names_renamer = {
+tv_univ_label_to_keys = {
     'US All Universe': 'us',
     'NASDAQ Composite': 'nasdaq-composite',
     'NASDAQ 100': 'ndx',
@@ -19,6 +19,7 @@ tv_names_renamer = {
     'China All Universe': 'china',
     'Hong Kong Universe': 'hongkong'
 }
+tv_univ_keys_to_labels = {v: k for k, v in tv_univ_label_to_keys.items()}
 
 
 category_dict = {
@@ -114,7 +115,8 @@ class TradingView:
     def __init__(self):
         self.database = TradingViewDB()
         self.data_df = pd.read_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
-        self.renamer = tv_names_renamer
+        self.univ_label_to_keys = tv_univ_label_to_keys
+        self.univ_keys_to_labels = tv_univ_keys_to_labels
         self.category_dict = category_dict
 
         self.universe_list = self.data_df.Universe.unique().tolist()
@@ -126,6 +128,20 @@ class TradingView:
 
     def load_available_dates(self):
         pass
+
+    def load_data_dt(self, dt):
+        """
+        Load the data for a specific date.
+        :param dt: the date of analysis
+        :return:
+        """
+        data_dt = self.data_df[self.data_df.Date == dt].copy()
+        available_univ = data_dt.Universe.unique().tolist()
+        available_univ_labels = [self.univ_keys_to_labels.get(x, x) for x in available_univ]
+        return {
+            'data_dt': data_dt,
+            'available_univ_labels': available_univ_labels
+        }
 
 
 if __name__ == "__main__":
