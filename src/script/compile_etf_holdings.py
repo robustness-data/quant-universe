@@ -29,43 +29,17 @@ def get_ishares_url(base_url, etf_id, etf_name, filename):
     return ishares_url
 
 
-def download_etf_holdings(holdings_url):
-    holdings_file = _fetch_ishares_holdings_file(holdings_url)
-    start_line = None
-    end_line = None
-    if holdings_file is not None:
-        for i, line in enumerate(holdings_file.splitlines()):
-            if _extract_as_of_date(line):
-                as_of_date = _extract_as_of_date(line).date().isoformat()
-            if _extract_inception_date(line):
-                inception_date = _extract_inception_date(line).date().isoformat()
-            if _extract_shares_outstanding(line):
-                shares_outstanding = _extract_shares_outstanding(line)
-            if 'Ticker,Name,Sector' in line:
-                start_line = i
-            if 'The content contained herein' in line:
-                end_line = i - 1
-                break
-
-    # Convert table to DataFrame
-    if start_line is not None:
-        table_text = '\n'.join(holdings_file.splitlines()[start_line:end_line])
-        df = pd.read_csv(StringIO(table_text))
-        df['as_of_date'] = as_of_date
-        df['inception_date'] = inception_date
-        df['shares_outstanding'] = shares_outstanding
-        return df
-    else:
-        return None
-
-
 def cache_etf_holdings(spec, N=1):
     tic, etf_id, etf_name, filename = spec
     holdings_url = get_ishares_url(base_url, etf_id, etf_name, filename)
     holdings_file = None
     n = 1
     while holdings_file is None:
-        holdings_file = download_etf_holdings(holdings_url)
+        try:
+            holdings_file = _download_etf_holdings(holdings_url)
+        except Exception as e:
+            print(f"Error: {e}")
+
         if holdings_file is None:
             print(f"Failed to download ETF holdings for {etf_name}. Retry {n}/{N}")
             n += 1
@@ -92,15 +66,15 @@ def cache_etf_by_group(etf_url_meta_file):
     return etf_dfs
 
 
-def find_ivv_url_spec():
+def _find_ivv_url_spec():
     # use IVV as the reference
     etf_url_df=pd.read_csv(ETF_META_DIR/'ishares_core_urls.csv')
     ivv_spec=etf_url_df.query("ticker=='ivv'").iloc[0]
     return ivv_spec['ticker'], ivv_spec['etf-id'], ivv_spec['etf_name'], ivv_spec['file_name']
 
 
-def find_latest_date():
-    spec = find_ivv_url_spec()
+def _find_latest_date():
+    spec = _find_ivv_url_spec()
     df = cache_etf_holdings(spec)
     return df.as_of_date.iloc[0]
 
@@ -108,7 +82,7 @@ def find_latest_date():
 def cache_all_etf(chunk_size=100):
 
     # get the cached ETF info
-    last_date = find_latest_date()
+    last_date = _find_latest_date()
     filename = f'ishares_holdings_{last_date}.csv'
     has_cache = False
     if os.path.exists(ETF_CACHE_DIR/filename):
@@ -187,6 +161,39 @@ def compile_etf_holdings():
     etf_dfs.to_csv(ETF_CACHE_DIR/f'ishares_holdings.csv', index=False)
 
     return etf_dfs
+
+
+def _download_etf_holdings(holdings_url):
+    holdings_file = _fetch_ishares_holdings_file(holdings_url)
+    start_line = None
+    end_line = None
+    if holdings_file is not None:
+        for i, line in enumerate(holdings_file.splitlines()):
+            if _extract_as_of_date(line):
+                as_of_date = _extract_as_of_date(line).date().isoformat()
+            if _extract_inception_date(line):
+                inception_date = _extract_inception_date(line).date().isoformat()
+            if _extract_shares_outstanding(line):
+                shares_outstanding = _extract_shares_outstanding(line)
+            if 'Ticker,Name,Sector' in line:
+                start_line = i
+            if 'The content contained herein' in line:
+                end_line = i - 1
+                break
+    else:
+        print(f"Error happened when requesting file from {holdings_url}")
+        return None
+
+    # Convert table to DataFrame
+    if start_line is not None:
+        table_text = '\n'.join(holdings_file.splitlines()[start_line:end_line])
+        df = pd.read_csv(StringIO(table_text))
+        df['as_of_date'] = as_of_date
+        df['inception_date'] = inception_date
+        df['shares_outstanding'] = shares_outstanding
+        return df
+    else:
+        return None
 
 
 def _fetch_ishares_holdings_file(holdings_url):
