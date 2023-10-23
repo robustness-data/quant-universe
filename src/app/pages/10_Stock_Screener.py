@@ -5,7 +5,7 @@ print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
-from utils.pandas_utils import df_filter, set_cols_numeric
+from src.utils.pandas_utils import df_filter, set_cols_numeric
 from src.data.equity_data.tradingview import TradingView
 from src.data.equity_data.yfinance_old import Stock
 
