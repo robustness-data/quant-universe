@@ -1,7 +1,9 @@
 import pandas as pd
 
 
-def df_filter(df, filter_dict):
+def df_filter(df, filter_dict=None):
+    if filter_dict is None:
+        return df
     df = df.copy()
     for column, value in filter_dict.items():
         if value is not None:

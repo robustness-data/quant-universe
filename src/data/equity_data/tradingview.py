@@ -1,6 +1,7 @@
 import pandas as pd
 import src.config as cfg
-from data.database.db_manager import TradingViewDB
+from src.data.database.db_manager import TradingViewDB
+from src.utils.pandas_utils import df_filter, set_cols_numeric
 
 import logging
 logger = logging.getLogger(__name__)
@@ -117,14 +118,18 @@ class TradingView:
         self.data_df = pd.read_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
         self.univ_label_to_keys = tv_univ_label_to_keys
         self.univ_keys_to_labels = tv_univ_keys_to_labels
-        self.category_dict = category_dict
-
-        self.universe_list = self.data_df.Universe.unique().tolist()
         self.dates = self.data_df.Date.unique().tolist()
         self.varnames = self.data_df.columns.tolist()
-        self.sector_names = self.data_df.Sector.sort_values().unique().tolist()
-        self.industry_names = self.data_df.Industry.sort_values().unique().tolist()
-        self.sector_industry_map = self.data_df.groupby(['Sector']).apply(lambda x: x.Industry.unique().tolist()).to_dict()
+        self.category_dict = category_dict
+        self.sector_industry_map = self.data_df.groupby(['Sector'])\
+            .apply(lambda x: x.Industry.unique().tolist()).to_dict()
+
+        # create a dictionary of unique values for universe, sector, and industry by date
+        temp_dict = {k: None for k in ['Universe','Sector','Industry']}
+        for k, v in temp_dict.items():
+            if v is None:
+                v = self.data_df.groupby(['Date'])[k].unique().to_dict()
+                setattr(self, k.lower()+'_by_date', v)
 
     def load_available_dates(self):
         pass
@@ -135,7 +140,7 @@ class TradingView:
         :param dt: the date of analysis
         :return:
         """
-        data_dt = self.data_df[self.data_df.Date == dt].copy()
+        data_dt = df_filter(df=self.data_df, filter_dict={'Date': dt})
         available_univ = data_dt.Universe.unique().tolist()
         available_univ_labels = [self.univ_keys_to_labels.get(x, x) for x in available_univ]
         return {
@@ -148,9 +153,13 @@ if __name__ == "__main__":
 
     tv = TradingView()
 
-    print(tv.universe_list)
-    print(tv.dates)
-    print(tv.varnames)
-    print(tv.sector_names)
-    print(tv.industry_names)
-    print(tv.sector_industry_map)
+    #print(tv.universe_list)
+    #print(tv.dates)
+    #print(tv.varnames)
+    #print(tv.sector_names)
+    #print(tv.industry_names)
+    #print(tv.sector_industry_map)
+
+    #tv.database.drop_table('universe')  # TODO: fix issues here
+    #tv.database.create_universe_table()
+    #tv.database.populate_universe_table(universe_df=tv.data_df)
