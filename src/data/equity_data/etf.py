@@ -81,17 +81,20 @@ def get_etf_stats():
             if df is None:
                 continue
             try:
-                write_new_data_to_db(df.assign(ticker=etf_ticker), k, str(DB_DIR / 'etf.db'))
+                today = datetime.today().date().isoformat()
+                write_new_data_to_db(df.assign(ticker=etf_ticker), k, str(DB_DIR / f'etf_{today}.db'))
             except Exception as e:
                 print(f"Error when writing {etf_ticker.upper()} {k} to DB: {e}")
             #conn = sqlite3.connect(str(DB_DIR / 'etf.db'))
             #print(pd.read_sql(f"SELECT * FROM {k}", conn).to_string())
+        #break  # for testing
 
     return etf_stats
 
 
 def parse_header(soup):
     header_dict = dict()
+    header_dict['etf_name'] = soup.find('h1').contents[0].strip()
 
     nav_spans = soup \
         .find('div', id='fundheaderTabs') \
@@ -258,6 +261,7 @@ def write_new_data_to_db(df, table_name, db_path, echo=False):
 
         # Insert new data
         if not new_data.empty:
+            new_data = new_data.assign(last_updated=datetime.now())
             new_data.to_sql(table_name, conn, if_exists='append', index=False)
             if echo:
                 print(f"Inserted {len(new_data)} new rows into {table_name}.")
@@ -270,7 +274,14 @@ def write_new_data_to_db(df, table_name, db_path, echo=False):
 
 if __name__ == '__main__':
 
-    #get_etf_stats()
+    get_etf_stats()
 
-    conn = sqlite3.connect(str(DB_DIR / 'etf.db'))
-    print(pd.read_sql(f"SELECT * FROM average_annual_performance", conn).to_string())
+    today = datetime.today().date().isoformat()
+    conn = sqlite3.connect(str(DB_DIR / f'etf_{today}.db'))
+    table_list = pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn).name.tolist()
+    for t in table_list:
+        print(f"\n\n=============== {t} ====================")
+        print(pd.read_sql("SELECT * FROM {}".format(t), conn).to_string())
+
+    # list all the tables
+    #print(pd.read_sql("SELECT name FROM sqlite_master WHERE type='table'", conn).to_string())
