@@ -1,5 +1,7 @@
+import os
 import pandas as pd
 import numpy as np
+
 import src.config as cfg
 from src.data.database.db_manager import TradingViewDB
 from src.utils.pandas_utils import df_filter, set_cols_numeric
@@ -153,7 +155,7 @@ class TradingView:
         }
 
     @staticmethod
-    def define_asset_tags(data):
+    def define_asset_tags(data, **kwargs):
         data['IsETF'] = data['Description'].str.contains('ETF')
         data['MarketCapGroup'] = data['Market Capitalization'].apply(lambda x: assign_market_cap_group(x / 1e6))
         return data
@@ -254,6 +256,169 @@ class TradingView:
             width=1100, height=500
         )
         return fig
+
+
+class BigA(TradingView):
+
+    performance_translator = {
+        'Change %': '涨跌幅',
+        'Change': '变化',
+        '3-Month Performance': '三个月表现',
+        '5Y Performance': '五年表现',
+        '6-Month Performance': '六个月表现',
+        'Change 1M, %': '过去一个月涨跌幅',
+        'Change 1W, %': '过去一周涨跌幅',
+        'YTD Performance': '年初至今表现',
+        'Weekly Performance': '周表现',
+        'Yearly Performance': '年度表现',
+        'Monthly Performance': '月度表现',
+        'Change from Open %': '开盘以来变化百分比'
+    }
+
+    def __init__(self):
+        super().__init__()
+        self.get_csi_meta_map()  # 从中证指数官网获取中证行业分类数据
+        self.asset_tag_supplement_data = {
+            'csi_industry_map': self.csi_industry_map,
+            'csi_tic_name_map': self.csi_tic_name_map
+        }
+
+    def get_csi_meta_map(self):
+        import src.meta.ashare_params as ashare_meta
+        self.csrc_sector_map = ashare_meta.fetch_csrcindustry(True)
+        self.csi_industry_map = ashare_meta.get_csi_industry_map()
+        self.csi_tic_name_map = self.csi_industry_map.get('tic_name_map')
+        self.csi_ashare_tickers = [k for k in self.csi_tic_name_map.keys() if '.HK' not in k]
+        self.csi_hek_tickers = [k for k in self.csi_tic_name_map.keys() if '.HK' in k]
+
+    def load_data_cache_from_csv(self, dt):
+        from src.config import TV_CACHE_DIR
+        data_dir = TV_CACHE_DIR/'raw'/'china'
+        dflist = []
+        for f in os.listdir(data_dir):
+            if ('.csv' in f) and (dt in f):
+                df = pd.read_csv(os.path.join(data_dir,f))
+                df['Date'] = f.split('_')[1]
+                df['Universe'] = f.split('_')[0].upper()
+                try:
+                    df['Time'] = f.split('_')[2].replace('.csv','')
+                except:
+                    df['Time'] = 'close'
+                dflist.append(df)
+        if len(dflist) == 0:
+            logging.info(f"No data found for {dt}")
+            return None
+        data = pd.concat(dflist)
+        try:
+            logger.info("Populating asset tags...")
+            data = BigA.define_asset_tags(data, **self.asset_tag_supplement_data)
+        except Exception as e:
+            logger.error(f"Failed to populate asset tags: {e}")
+        return data
+
+    @staticmethod
+    def define_asset_tags(data: pd.DataFrame, **kwargs):
+        def convert_to_ticker(x: int):
+            return str(x).zfill(6)
+        data['tic'] = data['Ticker'].apply(convert_to_ticker)
+        data['IsETF']=data['Description'].str.contains('ETF')
+        data['MarketCapGroup'] = data['Market Capitalization'].apply(lambda x: BigA.assign_market_cap_group(x/1e8))
+        csi_industry_map = kwargs.get('csi_industry_map')
+        csi_tic_name_map = kwargs.get('csi_tic_name_map')
+        data = data \
+            .assign(sector_csi_level_1 = lambda x: x['tic'].map(csi_industry_map.get('level_1')))\
+            .assign(sector_csi_level_2 = lambda x: x['tic'].map(csi_industry_map.get('level_2')))\
+            .assign(sector_csi_level_3 = lambda x: x['tic'].map(csi_industry_map.get('level_3')))\
+            .assign(sector_csi_level_4 = lambda x: x['tic'].map(csi_industry_map.get('level_4')))\
+            .assign(name_cn = lambda x: x['tic'].map(csi_tic_name_map))
+        
+        stocks = data[~data['IsETF']]
+        etfs = data[data['IsETF']]
+        logger.info(f"Successfully loaded {len(stocks)} stocks and {len(etfs)} ETFs")
+        return stocks, etfs
+    
+    @staticmethod
+    def assign_market_cap_group(x):
+        import numpy as np
+        """根据市值设定市值分组，单位为亿元"""
+        if np.isnan(x) or (x is None) or (not isinstance(x,float)):
+            return 'N/A'
+        if x >= 5000:
+            return "超大盘股"
+        elif 500 <= x < 5000:
+            return "大盘股"
+        elif 100 <= x < 500:
+            return "中盘股"
+        elif 10 <= x < 100:
+            return "小盘股"
+        elif 1 <= x < 10:
+            return "微盘股"
+        elif 0 < x < 1:
+            return "超微盘股"
+        else:
+            return "N/A"
+
+    @check_group_by_input
+    def calc_average_across_group(data: pd.DataFrame, groupby: list, vars: list, weight: str, reset_index: bool = True):
+        """
+        Calculate the grouped statistics of the columns across the groupby columns
+        parameters:
+            data: pd.DataFrame. A long-format dataframe with the columns to be grouped and calculated
+            groupby: list: the columns to be grouped
+            vars: list: the columns to be calculated
+            reset_index: bool
+        """
+        import pandas as pd
+        import numpy as np
+        import warnings
+        warnings.filterwarnings("ignore")
+        if weight is None:
+            grouped_mean = data.groupby(groupby)[vars].mean()        
+        else:
+            dflist = []
+            for var in vars:
+                grouped_mean_var = data.groupby(groupby).apply(lambda df: np.average(df[var], weights=df[weight], axis=0)).rename(var)
+                dflist.append(grouped_mean_var)
+            grouped_mean = pd.concat(dflist, axis=1)
+        if reset_index:
+                grouped_mean = grouped_mean.reset_index()
+        return grouped_mean
+
+    @staticmethod
+    def alpha_scatter(stocks):
+        stocks = stocks\
+            .assign(ytd_cost=lambda x: x['Price']*x['YTD Performance'].apply(lambda y: 1+y/100))\
+            .assign(CostLE10=lambda x: x['ytd_cost']<=10) \
+            .assign(logPrice=lambda x: np.log(x['Price'])) \
+            .assign(logYTDCost=lambda x: np.log(x['ytd_cost']))
+        
+        # box plot
+        fig = px.box(stocks, x='sector_csi_level_2', y='YTD Performance', color='CostLE10', width=1200, height=500)
+        fig.update_layout(
+            title_text='A股各个行业的年初至今表现',
+            xaxis_title_text='中证二级行业',
+            yaxis_title_text='年初至今表现',
+            legend_title_text='是否小于10元',
+            plot_bgcolor='rgba(0,0,0,0)',
+        )
+        fig.add_hline(y=0, line_width=1, line_dash="solid", line_color="gray")
+        fig.show()
+
+        # scatter plot
+        fig = px.scatter(
+            stocks, x='logYTDCost', y='YTD Performance', 
+            color='CostLE10', hover_data=['name_cn','ytd_cost'],
+            width=800, height=500)
+        # update layout
+        fig.update_layout(
+            title_text='年初至今表现 vs. 年初成本价',
+            xaxis_title_text='log(年初成本价)',
+            yaxis_title_text='年初至今表现',
+            legend_title_text='小于10元',
+            plot_bgcolor='rgba(0,0,0,0)',
+            template='plotly_dark'
+        )
+        fig.show()
 
 
 if __name__ == "__main__":
