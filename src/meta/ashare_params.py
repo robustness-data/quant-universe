@@ -2,6 +2,7 @@ import requests
 import zipfile
 import pandas as pd
 import io
+import os
 
 
 def choose_column_language(df, chinese_columns=True):
@@ -37,16 +38,17 @@ def get_csi_industry_notes(update=False):
 
 
 def get_csi_industry_map():
-    csi_industry_map = pd.read_excel('csi_industry_map.xlsx')
+    from pathlib import Path
+    csi_industry_map = pd.read_excel(Path(__file__).parent/'csi_industry_map.xlsx')
     csi_level_1_map = csi_industry_map.set_index('证券代码')['中证一级行业分类简称'].to_dict()
     csi_level_2_map = csi_industry_map.set_index('证券代码')['中证二级行业分类简称'].to_dict()
     csi_level_3_map = csi_industry_map.set_index('证券代码')['中证三级行业分类简称'].to_dict()
     csi_level_4_map = csi_industry_map.set_index('证券代码')['中证四级行业分类简称'].to_dict()
-    csi_tic2name = csi_industry_map.set_index('证券代码')['证券代码简称'].to_dict()
+    csi_tic_name_map = csi_industry_map.set_index('证券代码')['证券代码简称'].to_dict()
     return {
         'level_1': csi_level_1_map,
         'level_2': csi_level_2_map,
         'level_3': csi_level_3_map,
         'level_4': csi_level_4_map,
-        'asset_name': csi_tic2name
+        'tic_name_map': csi_tic_name_map
     }
