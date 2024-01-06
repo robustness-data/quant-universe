@@ -4,6 +4,7 @@ print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 import src.config as cfg
+from src.utils.general_utils import get_method_names, convert_to_float
 from src.utils.pandas_utils import df_filter, set_cols_numeric
 from src.utils.plotting_utils import plot_line_chart
 
@@ -103,7 +104,7 @@ with tab_3:
                 etf_of_interest.append(the_etf_data)
     etf_of_interest=pd.concat(etf_of_interest)\
         .assign(as_of_date=lambda x: pd.to_datetime(x.as_of_date))\
-        .assign(market_value=lambda x: x['Market Value'].apply(lambda x: float(x.replace(',','')) )/1e6)
+        .assign(market_value=lambda x: x['Market Value'].apply(convert_to_float))
     total_mv = etf_of_interest.groupby(['as_of_date','etf_name'])['market_value'].sum()
     # plot the total market value of the ETF using plotly
     fig = px.line(total_mv.reset_index(), x='as_of_date', y='market_value', color='etf_name')
