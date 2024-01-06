@@ -311,17 +311,17 @@ class BigA(TradingView):
         data = pd.concat(dflist)
         try:
             logger.info("Populating asset tags...")
-            data = BigA.define_asset_tags(data, **self.asset_tag_supplement_data)
+            return BigA.define_asset_tags(data, **self.asset_tag_supplement_data)
         except Exception as e:
             logger.error(f"Failed to populate asset tags: {e}")
-        return data
+            return
 
     @staticmethod
     def define_asset_tags(data: pd.DataFrame, **kwargs):
         def convert_to_ticker(x: int):
             return str(x).zfill(6)
         data['tic'] = data['Ticker'].apply(convert_to_ticker)
-        data['IsETF']=data['Description'].str.contains('ETF')
+        data['IsETF'] = data['Description'].str.contains('ETF')
         data['MarketCapGroup'] = data['Market Capitalization'].apply(lambda x: BigA.assign_market_cap_group(x/1e8))
         csi_industry_map = kwargs.get('csi_industry_map')
         csi_tic_name_map = kwargs.get('csi_tic_name_map')
@@ -332,10 +332,11 @@ class BigA(TradingView):
             .assign(sector_csi_level_4 = lambda x: x['tic'].map(csi_industry_map.get('level_4')))\
             .assign(name_cn = lambda x: x['tic'].map(csi_tic_name_map))
         
-        stocks = data[~data['IsETF']]
+        stocks = data[(~data['IsETF']) & (~data['name_cn'].isna())]
+        foreign_etf = data[(~data['IsETF']) & (data['name_cn'].isna())]
         etfs = data[data['IsETF']]
         logger.info(f"Successfully loaded {len(stocks)} stocks and {len(etfs)} ETFs")
-        return stocks, etfs
+        return stocks, etfs, foreign_etf
     
     @staticmethod
     def assign_market_cap_group(x):
@@ -385,15 +386,38 @@ class BigA(TradingView):
         return grouped_mean
 
     @staticmethod
-    def alpha_scatter(stocks):
-        stocks = stocks\
+    def prepare_metrics(stocks):
+        return stocks\
             .assign(ytd_cost=lambda x: x['Price']*x['YTD Performance'].apply(lambda y: 1+y/100))\
             .assign(CostLE10=lambda x: x['ytd_cost']<=10) \
             .assign(logPrice=lambda x: np.log(x['Price'])) \
-            .assign(logYTDCost=lambda x: np.log(x['ytd_cost']))
-        
+            .assign(logYTDCost=lambda x: np.log(x['ytd_cost']))\
+            .assign(logVol=lambda x: x['YTD Performance']/x['Volatility'])\
+            .assign(SharpRatio=lambda x: x['YTD Performance']/x['Volatility'])
+
+    @staticmethod
+    def top_sharp_ratios(stocks):
+        metrics = BigA.prepare_metrics(stocks)
+        top_names = metrics.sort_values(by='SharpRatio', ascending=False).head(100)
+        print(f"大A股中，年初至今经风险调整过后表现最好的前100只股票：")
+        for i, row in top_names.iterrows():
+            print(
+                '名称:', row.name_cn,
+                "| 代码:", row.tic,
+                "| 年初价格:", round(row.ytd_cost, 3),
+                #"| 英文名：", row.Description,
+                "| 2023年表现:", "{:.2f}%".format(row['YTD Performance']),
+                "| 波动率:", round(row.Volatility, 3),
+                "| 行业：", row.sector_csi_level_2
+            )
+
+    @staticmethod
+    def alpha_box(stocks):
         # box plot
-        fig = px.box(stocks, x='sector_csi_level_2', y='YTD Performance', color='CostLE10', width=1200, height=500)
+        fig = px.box(BigA.prepare_metrics(stocks),
+                     x='sector_csi_level_2',
+                     y='YTD Performance',
+                     color='CostLE10', width=1200, height=500)
         fig.update_layout(
             title_text='A股各个行业的年初至今表现',
             xaxis_title_text='中证二级行业',
@@ -404,21 +428,72 @@ class BigA(TradingView):
         fig.add_hline(y=0, line_width=1, line_dash="solid", line_color="gray")
         fig.show()
 
+    @staticmethod
+    def alpha_scatter(stocks):
+        plot_data = BigA.prepare_metrics(stocks)
+
+        label_map = {
+            'YTD Performance': '年初至今表现',
+            'Volatility': '波动率/风险',
+            'SharpRatio': '风险调整后收益'
+        }
+        for k, label in label_map.items():
+            # scatter plot
+            fig = px.scatter(
+                plot_data,
+                x='logYTDCost', y=k,
+                color='CostLE10', hover_data=['name_cn','ytd_cost'],
+                width=800, height=500)
+            # update layout
+            fig.update_layout(
+                title_text=f'{label} vs. 年初成本价',
+                xaxis_title_text='log(年初成本价)',
+                yaxis_title_text=label,
+                legend_title_text='小于10元',
+                plot_bgcolor='rgba(0,0,0,0)',
+                template='plotly_dark'
+            )
+            fig.show()
+
         # scatter plot
         fig = px.scatter(
-            stocks, x='logYTDCost', y='YTD Performance', 
+            plot_data.sort_values('SharpRatio',ascending=False),
+            x='Volatility', y='YTD Performance',
             color='CostLE10', hover_data=['name_cn','ytd_cost'],
             width=800, height=500)
         # update layout
         fig.update_layout(
-            title_text='年初至今表现 vs. 年初成本价',
-            xaxis_title_text='log(年初成本价)',
+            title_text='Frontier',
+            xaxis_title_text='波动率/风险',
             yaxis_title_text='年初至今表现',
-            legend_title_text='小于10元',
+            legend_title_text='年初成本价',
             plot_bgcolor='rgba(0,0,0,0)',
             template='plotly_dark'
         )
         fig.show()
+
+    @staticmethod
+    def alpha_histogram(stocks):
+        plot_data = BigA.prepare_metrics(stocks)
+        label_map = {
+            'YTD Performance': '年初至今表现',
+            'Volatility': '波动率/风险',
+            'SharpRatio': '风险调整后收益'
+        }
+        for x in ['YTD Performance','Volatility','SharpRatio']:
+            fig = px.histogram(
+                plot_data, x=x, color='CostLE10', nbins=200,
+                marginal='box', width=800, height=500)
+            # update layout
+            fig.update_layout(
+                title_text=label_map.get(x),
+                xaxis_title_text=label_map.get(x),
+                yaxis_title_text='Count',
+                legend_title_text='小于10元',
+                plot_bgcolor='rgba(0,0,0,0)',
+                template='plotly_dark'
+            )
+            fig.show()
 
 
 if __name__ == "__main__":
