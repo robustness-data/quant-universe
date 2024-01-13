@@ -11,8 +11,9 @@ import pandas as pd
 from io import StringIO
 import requests
 
-
-ETF_CACHE_DIR=Path(os.getcwd()).parent.parent/'data'/'equity_market'/'1_ishares_etf'
+ROOT_DIR = Path(__file__).parent.parent.parent
+print(ROOT_DIR)
+ETF_CACHE_DIR=ROOT_DIR/'data'/'equity_market'/'1_ishares_etf'
 ETF_META_DIR=ETF_CACHE_DIR/'meta'
 print(ETF_CACHE_DIR)
 if not os.path.exists(ETF_CACHE_DIR):
