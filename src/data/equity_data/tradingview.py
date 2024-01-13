@@ -317,6 +317,31 @@ class BigA(TradingView):
             return
 
     @staticmethod
+    def download_a_share_historical(db_path, stocks):
+        import datetime
+        today = datetime.datetime.today().strftime('%Y-%m-%d')
+
+        import sqlite3
+        conn = sqlite3.connect(db_path)
+
+        # 从数据库中读取已经下载的股票代码
+        query = f"""
+        SELECT DISTINCT 股票代码 FROM history_quote
+        """
+        df = pd.read_sql(query, conn)
+        cached_tickers=df['股票代码'].values.tolist()
+
+        stocks_to_download = stocks[~stocks.tic.isin(cached_tickers)]
+
+        from tqdm import tqdm
+        import efinance as ef
+        with tqdm(total=stocks_to_download.shape[0], desc="下载历史行情") as pbar:
+            for i, row in stocks_to_download.iterrows():
+                df = ef.stock.get_quote_history(stock_codes=row.tic)
+                df.to_sql('history_quote', conn, if_exists='append', index=False)
+                pbar.update(1)
+
+    @staticmethod
     def define_asset_tags(data: pd.DataFrame, **kwargs):
         def convert_to_ticker(x: int):
             return str(x).zfill(6)
