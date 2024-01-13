@@ -15,22 +15,19 @@ from tqdm import tqdm
 from io import StringIO
 
 
-#ETF_CACHE_DIR=Path(os.getcwd()).parent.parent.parent/'data'/'equity_market'/'1_ishares_etf'
-#ETF_META_DIR=ETF_CACHE_DIR/'meta'
-#print(ETF_CACHE_DIR)
-#if not os.path.exists(ETF_CACHE_DIR):
-#    print('Creating ETF cache directory')
-#    os.makedirs(ETF_CACHE_DIR)
-
-from src.config import ETF_CACHE_DIR, DB_DIR
-ETF_META_DIR=ETF_CACHE_DIR/'meta'
+ROOT_DIR=Path(__file__).parent.parent.parent.parent
+ISHARES_URL_DIR=ROOT_DIR/'src'/'meta'/'ishares_etf'
+DB_DIR=ROOT_DIR/'database'
+if not os.path.exists(DB_DIR):
+    print('Creating database directory')
+    os.makedirs(DB_DIR)
 
 
 def get_all_etf_urls():
     # get all the ETF urls info
     etf_meta = []
-    for f in os.listdir(ETF_META_DIR):
-        etf_meta.append(pd.read_csv(ETF_META_DIR/f))
+    for f in os.listdir(ISHARES_URL_DIR):
+        etf_meta.append(pd.read_csv(ISHARES_URL_DIR/f))
     etf_meta = pd.concat(etf_meta)
     etf_meta.drop_duplicates(inplace=True)
 

@@ -176,7 +176,7 @@ def _download_etf_holdings(holdings_url):
                 inception_date = _extract_inception_date(line).date().isoformat()
             if _extract_shares_outstanding(line):
                 shares_outstanding = _extract_shares_outstanding(line)
-            if 'Ticker,Name,Sector' in line:
+            if 'Ticker,Name' in line:
                 start_line = i
             if 'The content contained herein' in line:
                 end_line = i - 1
