@@ -1,9 +1,14 @@
-import os, datetime, itertools, zipfile, tqdm
+import os, sys, zipfile
 from io import BytesIO
 from tqdm import tqdm
 import pandas as pd
 
 from pathlib import Path
+ROOT_DIR = Path(__file__).parent.parent.parent
+print(ROOT_DIR)
+if not str(ROOT_DIR) in sys.path:
+    sys.path.append(str(ROOT_DIR))
+
 import src.config as cfg
 print("Cache directory:", cfg.TV_CACHE_DIR)
 

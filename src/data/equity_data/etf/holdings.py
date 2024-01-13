@@ -66,8 +66,13 @@ ark_etfs_urls = {
     "ARKB": "https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv"
 }
 
+# SPDR ETFs
+spdr_etfs_urls = {
+    "XBI": "https://www.ssga.com/us/en/intermediary/etfs/library-content/products/fund-data/etfs/us/holdings-daily-us-en-xbi.xlsx",
+}
+
 #================================== ETF Holdings Parser ======================================#
-def parse_ark_holdings(tic, text):
+def parse_ark_holdings(text):
     df = pd.read_csv(io.StringIO(text.decode('utf-8'))).iloc[:-1,:]
     df['date'] = df['date'].apply(pd.to_datetime).apply(lambda dt: dt.date().isoformat())
     ark_renamer = {
@@ -87,7 +92,7 @@ def parse_ark_holdings(tic, text):
     return df
 
 
-def parse_direxion_holdings(tic, text):
+def parse_direxion_holdings(text):
     df = pd.read_csv(io.StringIO(text.decode('utf-8')),skiprows=5)
     df['date'] = df['TradeDate'].apply(lambda dt: dt.split(' ')[0]).apply(pd.to_datetime).apply(lambda dt: dt.date().isoformat())
     direxion_renamer = {
@@ -132,12 +137,12 @@ def main():
     for tic, text in tqdm(holdings_data.items()):
         if tic in ark_etfs_urls:
             try:
-                holdings_csv[tic] = parse_ark_holdings(tic, text)
+                holdings_csv[tic] = parse_ark_holdings(text)
             except:
                 print(f"Failed to parse {tic}")
         elif tic in direxion_etfs_all:
             try:
-                holdings_csv[tic] = parse_direxion_holdings(tic, text)
+                holdings_csv[tic] = parse_direxion_holdings(text)
             except:
                 print(f"Failed to parse {tic}")
     
