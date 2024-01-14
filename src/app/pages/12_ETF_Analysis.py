@@ -1,7 +1,6 @@
 import sys
 import itertools
 from pathlib import Path
-print(__file__)
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
