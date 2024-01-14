@@ -30,6 +30,7 @@ def get_etf_holdings_text(url):
 
 
 def scrape_webpage(url):
+    print(url)
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3'}
     response = requests.get(url, headers=headers)
@@ -109,10 +110,18 @@ def parse_direxion_holdings(text):
     df['weight'] = df['weight'].apply(lambda x: x/100)
     return df.drop(columns=['TradeDate'])
 
+# ================================ Wrapper  ======================================#
+def get_ark_etf_holdings(etf_ticker):
+    if etf_ticker not in ark_etfs_urls:
+        print(f"{etf_ticker} is not an ARK ETF")
+        return
+    url = ark_etfs_urls[etf_ticker]
+    text = get_etf_holdings_text(url)
+    return parse_ark_holdings(text)
+
+
 #================================== Main Workflow ======================================#
 def main():
-    print("Root Dir:",ROOT_DIR)
-    print("DB Dir:",DB_DIR)
     import sqlite3, os, datetime
     conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
 
