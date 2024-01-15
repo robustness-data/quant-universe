@@ -1,5 +1,5 @@
 import sys
-import itertools
+import io
 from pathlib import Path
 ROOT_DIR=Path(__file__).parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
@@ -38,3 +38,10 @@ if st.button("读取ETF持仓数据"):
 
 if st.session_state['etf_holdings'] is not None:
     st.write(st.session_state['etf_holdings'].head())
+
+
+text = get_etf_holdings_text(spdr_etfs_urls['XBI'])
+
+
+st.write(pd.read_excel(text, skiprows=4).dropna())
+
