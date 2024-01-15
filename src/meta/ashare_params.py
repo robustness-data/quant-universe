@@ -4,6 +4,7 @@ import pandas as pd
 import io
 import os
 
+THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
 def choose_column_language(df, chinese_columns=True):
     if chinese_columns:
@@ -21,7 +22,7 @@ def fetch_csrcindustry(chinese_name=True):
     response = requests.get(csrcindustry_url)
     zip_file = zipfile.ZipFile(io.BytesIO(response.content))
     excel_file_name = [f for f in zip_file.namelist() if f.endswith('.xlsx') or f.endswith('.xls')][0]
-    extracted_file = zip_file.extract(excel_file_name)
+    extracted_file = zip_file.extract(excel_file_name, path=THIS_DIR)
     df = pd.read_excel(extracted_file)
     df = choose_column_language(df, chinese_name)
     return df
@@ -32,14 +33,13 @@ def get_csi_industry_notes(update=False):
         url = "https://csi-web-dev.oss-cn-shanghai-finance-1-pub.aliyuncs.com/industryClassification/%E4%B8%AD%E8%AF%81%E8%A1%8C%E4%B8%9A%E5%88%86%E7%B1%BB%E6%9E%B6%E6%9E%84.xlsx"
         csi_industry_notes=pd.read_excel(url)
         csi_industry_notes.fillna(method='ffill').set_index(['一级行业','二级行业','三级行业','四级行业'])['释义'].reset_index()
-        csi_industry_notes.to_csv('csi_industry_notes.csv', index=False)
-    csi_industry_notes=pd.read_csv('csi_industry_notes.csv')
+        csi_industry_notes.to_csv(os.path.join(THIS_DIR,'csi_industry_notes.csv'), index=False)
+    csi_industry_notes=pd.read_csv(os.path.join(THIS_DIR,'csi_industry_notes.csv'))
     return csi_industry_notes.fillna(method='ffill').set_index(['一级行业','二级行业','三级行业','四级行业'])['释义']
 
 
 def get_csi_industry_map():
-    from pathlib import Path
-    csi_industry_map = pd.read_excel(Path(__file__).parent/'csi_industry_map.xlsx')
+    csi_industry_map = pd.read_excel(os.path.join(THIS_DIR,'csi_industry_map.xlsx'))
     csi_level_1_map = csi_industry_map.set_index('证券代码')['中证一级行业分类简称'].to_dict()
     csi_level_2_map = csi_industry_map.set_index('证券代码')['中证二级行业分类简称'].to_dict()
     csi_level_3_map = csi_industry_map.set_index('证券代码')['中证三级行业分类简称'].to_dict()
@@ -52,3 +52,6 @@ def get_csi_industry_map():
         'level_4': csi_level_4_map,
         'tic_name_map': csi_tic_name_map
     }
+
+if __name__ == '__main__':
+    fetch_csrcindustry()
