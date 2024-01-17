@@ -16,12 +16,13 @@ import plotly.express as px
 import sqlite3
 import datetime
 import pandas as pd
+import numpy as np
 
 
 holdings_urls = {
     "ARKB": "https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv",
     'IBIT': "https://www.ishares.com/us/products/333011/fund/1467271812596.ajax?fileType=csv&fileName=IBIT_holdings&dataType=fund",
-    "BRRR": "https://valkyrieinvest.com/brrr-holdings/",
+    "BRRR": "https://valkyrieinvest.com/brrr",
     "FBTC": "https://research2.fidelity.com/fidelity/screeners/etf/etfholdings.asp?symbol=FBTC&view=Holdings",
     "EZBC": "https://www.franklintempleton.com/investments/options/exchange-traded-funds/products/39639/SINGLCLASS/franklin-bitcoin-etf/EZBC"
 }
@@ -73,17 +74,29 @@ def scrape_arkb_holdings():
 
 def scrape_brrr_holdings():
     brrr_holdings_soup = scrape_webpage(holdings_urls['BRRR'])
-    date_str = brrr_holdings_soup.find_all('tr', id='table_13_row_27')[0].find_all('td')[0].text
-    actual_date = datetime.datetime.strptime(date_str, '%m/%d/%Y').date() - datetime.timedelta(days=1)
-    return pd.DataFrame({
-        'BRRR': {
-            'date': actual_date.isoformat(),
-            'btc_holdings': float(brrr_holdings_soup.find_all('tr', id='table_13_row_27')[0].find_all('td')[5].text.replace(',','')),
-            'btc_mv': float(brrr_holdings_soup.find_all('tr', id='table_13_row_27')[0].find_all('td')[7].text.replace(',',''))/1e9,
-            'average_mv': float(brrr_holdings_soup.find_all('tr', id='table_13_row_27')[0].find_all('td')[6].text.replace(',','')),
-            'cash_holdings': float(brrr_holdings_soup.find_all('tr', id='table_13_row_28')[0].find_all('td')[7].text.replace(',','')),
-        }
-    })
+    divs = brrr_holdings_soup.find_all('div')
+    for div in divs:
+        if div.has_attr('class'):
+            if "mcb-item-jm3z2by6" in div['class']:
+                tables = div.find_all('table')
+                parsed_holdings = pd.read_html(str(tables[0]))[0]
+                
+            if "mcb-column-inner-118575426" in div['class']:
+                h2s = div.find_all('h2')
+                for h2 in h2s:
+                    if h2.text == "Holdings":
+                        p = h2.find_next_sibling('p')
+                        date = p.text.split(' ')[-1]
+                        date = pd.to_datetime(date).date().isoformat()
+
+    brrr_info = {
+        'btc_holdings': float(parsed_holdings.iloc[1,2].replace(',','')),
+        'btc_mv': float(parsed_holdings.iloc[1,3])/1e9,
+        'date': date,
+        'cash_holdings': float(parsed_holdings.iloc[2,2].replace(',','')),
+    }
+    brrr_info['average_mv'] = 1e9*brrr_info['btc_mv']/brrr_info['btc_holdings']
+    return pd.DataFrame({'BRRR': brrr_info})
 
 
 def scrape_btc_etf_holdings(max_retry: int):
@@ -128,6 +141,52 @@ def get_holdings():
     existing_holdings = pd.read_sql('select * from btc_etf_holdings', conn)
     conn.close()
     return existing_holdings.drop_duplicates().sort_values(['etf_ticker','date'])
+
+
+def insert_records(ticker: str, date: str, btc_holdings: float, btc_mv: float, average_mv=np.nan, cash_holdings=np.nan):
+    import sqlite3
+    from src.config import DB_DIR
+    conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+
+    pd.DataFrame({
+        'etf_ticker': [ticker],
+        'date': [date],
+        'btc_holdings': [btc_holdings],
+        'btc_mv': [btc_mv],
+        'average_mv': [average_mv],
+        'cash_holdings': [cash_holdings]
+    }).to_sql('btc_etf_holdings', conn, if_exists='append', index=False)
+    conn.close()
+
+
+def fill_missing_price(method='mv/quant'):
+    import sqlite3
+    from src.config import DB_DIR
+    conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+    if method == 'mv/quant':
+        conn.execute("update btc_etf_holdings set average_mv = btc_mv/btc_holdings where average_mv is null")
+        conn.commit()
+        conn.close()
+
+
+def fill_missing_holdings(method='mv/price'):
+    import sqlite3
+    from src.config import DB_DIR
+    if method == 'mv/price':
+        conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+        conn.execute("update btc_etf_holdings set btc_holdings = btc_mv/average_mv where btc_holdings is null")
+        conn.commit()
+        conn.close()
+
+
+def recalc_holdings(ticker, method='mv/price'):
+    import sqlite3
+    from src.config import DB_DIR
+    if method == 'mv/price':
+        conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+        conn.execute(f"update btc_etf_holdings set btc_holdings = 1e9*btc_mv/average_mv where etf_ticker = '{ticker}' ")
+        conn.commit()
+        conn.close()
 
 
 def main():
