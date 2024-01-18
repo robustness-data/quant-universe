@@ -189,6 +189,19 @@ def recalc_holdings(ticker, method='mv/price'):
         conn.close()
 
 
+def correct_date(ticker, original_date, new_date):
+    import sqlite3
+    from src.config import DB_DIR
+    conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+    sql = f"""
+    update btc_etf_holdings set date = '{new_date}' 
+    where etf_ticker = '{ticker}' and date = '{original_date}'
+    """
+    conn.execute(sql)
+    conn.commit()
+    conn.close()
+    
+
 def main():
     print("Downloading BTC ETF holdings...")
     btc_etf_holdings = scrape_btc_etf_holdings(3)
