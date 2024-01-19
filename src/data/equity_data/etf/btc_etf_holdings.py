@@ -159,12 +159,22 @@ def insert_records(ticker: str, date: str, btc_holdings: float, btc_mv: float, a
     conn.close()
 
 
-def fill_missing_price(method='mv/quant'):
+def fill_missing_price(method='mv/quant', price=np.nan, date=np.nan):
     import sqlite3
     from src.config import DB_DIR
     conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
     if method == 'mv/quant':
         conn.execute("update btc_etf_holdings set average_mv = btc_mv/btc_holdings where average_mv is null")
+        conn.commit()
+        conn.close()
+    elif method == 'value':
+        sql = f"""
+        update btc_etf_holdings 
+        set average_mv = {price} 
+        where average_mv is null 
+        and date = '{date}' 
+        """
+        conn.execute(sql)
         conn.commit()
         conn.close()
 
@@ -200,7 +210,7 @@ def correct_date(ticker, original_date, new_date):
     conn.execute(sql)
     conn.commit()
     conn.close()
-    
+
 
 def main():
     print("Downloading BTC ETF holdings...")
