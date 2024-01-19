@@ -7,7 +7,6 @@ sys.path.append(str(ROOT_DIR))
 from src.utils.pandas_utils import df_filter, set_cols_numeric
 from src.utils.streamlit_utils import filter_dataframe
 from src.data.equity_data.tradingview import TradingView, BigA
-from src.data.equity_data.yfinance_old import Stock
 from src.config import DB_DIR, TV_CACHE_DIR
 A_SHARE_CACHE_DIR = TV_CACHE_DIR/'raw'/'china'
 

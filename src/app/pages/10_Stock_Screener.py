@@ -7,7 +7,7 @@ sys.path.append(str(ROOT_DIR))
 
 from src.utils.pandas_utils import df_filter, set_cols_numeric
 from src.data.equity_data.tradingview import TradingView
-from src.data.equity_data.yfinance_old import Stock
+from src.data.equity_data.yfinance import Stock
 
 import streamlit as st
 import plotly.express as px
