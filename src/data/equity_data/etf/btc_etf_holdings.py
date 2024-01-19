@@ -6,7 +6,6 @@ sys.path.append(str(ROOT_DIR))
 
 from src.utils.pandas_utils import df_filter, set_cols_numeric
 from src.data.equity_data.tradingview import TradingView
-from src.data.equity_data.yfinance_old import Stock
 from src.config import DB_DIR
 from src.data.equity_data.etf.holdings import get_ark_etf_holdings, scrape_webpage, spdr_etfs_urls
 from src.script.compile_etf_holdings import _download_etf_holdings
