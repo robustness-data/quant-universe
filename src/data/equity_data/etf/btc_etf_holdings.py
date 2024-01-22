@@ -22,22 +22,11 @@ holdings_urls = {
     "ARKB": "https://ark-funds.com/wp-content/uploads/funds-etf-csv/ARK_21SHARES_BITCOIN_ETF_ARKB_HOLDINGS.csv",
     'IBIT': "https://www.ishares.com/us/products/333011/fund/1467271812596.ajax?fileType=csv&fileName=IBIT_holdings&dataType=fund",
     "BRRR": "https://valkyrieinvest.com/brrr",
-    "FBTC": "https://research2.fidelity.com/fidelity/screeners/etf/etfholdings.asp?symbol=FBTC&view=Holdings",
-    "EZBC": "https://www.franklintempleton.com/investments/options/exchange-traded-funds/products/39639/SINGLCLASS/franklin-bitcoin-etf/EZBC"
+    "FBTC": "https://www.actionsxchangerepository.fidelity.com/ShowDocument/documentExcel.htm?_fax=-18%2342%23-61%23-110%23114%2378%23117%2320%23-1%2396%2339%23-62%23-21%2386%23-100%2337%2316%2335%23-68%2391%23-66%2354%23103%23-16%2369%23-30%2358%23-20%2376%23-84%23-11%23-87%23-12%23-5%23-88%23-81%23-82%2362%2321%23-75%23-38%23-43%23-39%23-42%23-96%23-88%2388%23-45%23105%23-76%2367%23125%23123%23-122%23-5%2319%23-74%235%23-89%23-105%23-67%23126%2377%23-126%23-63%2334%2346%2383%23-20%2394%23-19%2363%2384%2373%23-122%23-128%23-66%2387%23122%2399%23-82%2357%23-31%23-81%2368%23114%2348%23-42%23-43%23112%23-89%2342%2313%2319%2329%23-117%2321%23-37%23-56%23-125%23-115%23-55%23100%23100%2383%23-5%23-100%23-91%23-14%2389%2396%23-104%23-10%2319%2372%2368%23-104%23112%23-124%23-45%2310%2382%23-111%2329%2342%2325%23-41%233%23-83%23-82%2367%23-118%23-119%233%23-98%23-11%2371%23107%23-82%23-3%23-86%23-27%23-57%23-125%2342%23119%2357%23-111%2321%2363%23-99%2317%23-25%23-81%23-24%23-58%2351%2344%23115%23-107%23-77%23114%2363%2359%23-31%2334%23112%23114%23-57%23125%2386%23-39%23-86%23-67%23-11%23-125%23",
+    "EZBC": "https://www.franklintempleton.com/investments/options/exchange-traded-funds/products/39639/SINGLCLASS/franklin-bitcoin-etf/EZBC",
+    'BTCO': "https://www.invesco.com/us/financial-products/etfs/product-detail?audienceType=Advisor&ticker=BTCO"
 }
 
-
-# Spot BTC ETFs
-summary_urls ={
-    "BTCW": [],
-    "BTCO": [
-        "https://www.invesco.com/us/financial-products/etfs/product-detail?ticker=BTCO"
-    ],
-    "FBTC": [
-        "https://digital.fidelity.com/prgw/digital/research/quote/dashboard/key-statistics?symbol=FBTC",
-        "https://digital.fidelity.com/prgw/digital/research/quote/dashboard/summary?symbol=FBTC"
-    ],
-}
 
 def scrape_ibit_holdings():
     ibit_holdings = _download_etf_holdings(holdings_urls['IBIT'])\
@@ -121,7 +110,7 @@ def scrape_btc_etf_holdings(max_retry: int):
     return pd.concat(holdings_list, axis=1)
 
 
-def write_to_db(btc_etf_holdings: pd.DataFrame):
+def write_to_db(btc_etf_holdings: pd.DataFrame, table_name='btc_etf_holdings'):
     import sqlite3
     from src.config import DB_DIR
     conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
@@ -129,7 +118,8 @@ def write_to_db(btc_etf_holdings: pd.DataFrame):
         .assign(btc_holdings = lambda x: x['btc_holdings'].astype(float))\
         .assign(date=lambda x: pd.to_datetime(x['date'], format='mixed'))\
         .assign(date=lambda x: x['date'].dt.strftime('%Y-%m-%d'))\
-        .to_sql('btc_etf_holdings', conn, if_exists='append', index=False)
+        .assign(updated_datetime=lambda x: datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S'))\
+        .to_sql(table_name, conn, if_exists='append', index=False)
     conn.close()
     
 
@@ -137,15 +127,19 @@ def get_holdings():
     import sqlite3
     from src.config import DB_DIR
     conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
-    existing_holdings = pd.read_sql('select * from btc_etf_holdings', conn)
+    existing_holdings = pd.read_sql("SELECT * FROM btc_etf_holdings", conn)\
+        .drop_duplicates(keep='last')\
+        .groupby(['etf_ticker','date']).apply(lambda df: df.sort_values('updated_datetime').iloc[-1])\
+        .reset_index(drop=True)
     conn.close()
-    return existing_holdings.drop_duplicates().sort_values(['etf_ticker','date'])
+    return existing_holdings
 
 
 def insert_records(ticker: str, date: str, btc_holdings: float, btc_mv: float, average_mv=np.nan, cash_holdings=np.nan):
     import sqlite3
     from src.config import DB_DIR
     conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+    import datetime
 
     pd.DataFrame({
         'etf_ticker': [ticker],
@@ -153,7 +147,8 @@ def insert_records(ticker: str, date: str, btc_holdings: float, btc_mv: float, a
         'btc_holdings': [btc_holdings],
         'btc_mv': [btc_mv],
         'average_mv': [average_mv],
-        'cash_holdings': [cash_holdings]
+        'cash_holdings': [cash_holdings],
+        'updated_datetime': [datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')] 
     }).to_sql('btc_etf_holdings', conn, if_exists='append', index=False)
     conn.close()
 
@@ -211,11 +206,87 @@ def correct_date(ticker, original_date, new_date):
     conn.close()
 
 
+def delete_record(ticker, date, holdings):
+    import sqlite3
+    from src.config import DB_DIR
+    conn = sqlite3.connect(DB_DIR/'etf_holdings.db')
+    sql = f"""
+    delete from btc_etf_holdings 
+    where date = '{date}' 
+    and etf_ticker = '{ticker}' 
+    and btc_holdings = {holdings}
+    """
+    conn.execute(sql)
+    conn.commit()
+    conn.close()
+
+
 def main():
     print("Downloading BTC ETF holdings...")
     btc_etf_holdings = scrape_btc_etf_holdings(3)
     write_to_db(btc_etf_holdings)
     #print(get_holdings().to_string())
+
+
+def plot_btc_etf_holdings():
+    fig = px.bar(
+        get_holdings().set_index(['date','etf_ticker'])\
+            .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC']]\
+            .dropna(how='all')\
+            .rename(columns={'ARKB': 'ARK 21Shares Bitcoin ETF', 
+                            'IBIT': '贝莱德比特币ETF',
+                            'FBTC': 'Fidelity比特币ETF',
+                            'BRRR': 'Valkyrie Bitcoin ETF',
+                            'BTCO': 'Invesco Bitcoin ETF',
+                            'EZBC': '富兰克林比特币ETF'}),
+        barmode='stack',
+        color_discrete_sequence=['#FFD300','#FF0800','#00A86B','orange','#0080FF','#AF69EF'],
+        template='plotly_dark'    
+    )
+    fig.update_layout(
+        height=700, width=1000,
+        title=f'比特币ETF持仓量',
+        xaxis_title='持仓日期',
+        yaxis_title='比特币持有量',
+        legend_title_text=None,
+        legend=dict(orientation="v",yanchor="top",y=1,xanchor="left",x=1),
+        annotations=[
+            dict(xref="paper",yref="paper",x=0,y=-1,showarrow=False,
+                text="数据来源：ARK Invest, BlackRock, Valkyrie, Invesco, Franklin Templeton",
+                font=dict(size=12,color="#ffffff"
+                )
+            )
+        ],
+    )
+    fig.update_xaxes(rangebreaks=[dict(bounds=["sat", "mon"])])
+    return fig
+
+
+def plot_btc_etf_growth():
+    fig = px.box(
+        get_holdings().set_index(['date','etf_ticker'])\
+            .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC']]\
+            .dropna(how='all').diff(),
+        # change color
+        color_discrete_sequence=['#FFD300','#FF0800','#00A86B','orange','#0080FF','#AF69EF']
+    )
+    fig.update_layout(
+        height=700, width=1000,
+        title=f'比特币ETF持仓每日增长量分布（截止 2024-1-18）',
+        xaxis_title=None,
+        yaxis_title='比特币持有量',
+        legend_title_text=None,
+        legend=dict(orientation="v",yanchor="top",y=1,xanchor="left",x=1),
+        annotations=[
+            dict(xref="paper",yref="paper",x=0,y=-.1,showarrow=False,
+                text="数据来源：ARK Invest, BlackRock, Valkyrie, Invesco, Franklin Templeton, Fidelity",
+                font=dict(size=12,color="white"
+                )
+            )
+        ],
+        template='plotly_dark'
+    )
+    return fig
 
 
 if __name__ == '__main__':
