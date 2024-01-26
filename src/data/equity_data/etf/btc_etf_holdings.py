@@ -110,6 +110,27 @@ def scrape_btc_etf_holdings(max_retry: int):
     return pd.concat(holdings_list, axis=1)
 
 
+def scrape_fbtc_holdings():
+    import requests
+    response = requests.get(BTC_ETF_Scraper.holdings_urls['FBTC'])
+    if response.status_code == 200:
+        fbtc_raw = response.content
+    else:
+        print("Failed to get response from FBTC's website.")
+    # turn btype into ByteIO object
+    from io import BytesIO
+    holdings_tab = pd.read_excel(BytesIO(fbtc_raw), header=None)
+    for i, row in holdings_tab.iterrows():
+        print(i)
+        row_text = ' '.join([str(x) for x in row.to_dict().values()])
+        row_text = row_text.replace('nan', '').strip()
+        print(row_text)
+        #if row['Security Name'] == 'BITCOIN':
+        #    qty = row['Quantity Held']
+        #    mv = row['Market Value']
+        #    print(qty, mv)
+
+
 def write_to_db(btc_etf_holdings: pd.DataFrame, table_name='btc_etf_holdings'):
     import sqlite3
     from src.config import DB_DIR
@@ -265,21 +286,21 @@ def plot_btc_etf_holdings():
 def plot_btc_etf_growth():
     fig = px.box(
         get_holdings().set_index(['date','etf_ticker'])\
-            .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC']]\
+            .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC','GBTC']]\
             .dropna(how='all').diff(),
         # change color
         color_discrete_sequence=['#FFD300','#FF0800','#00A86B','orange','#0080FF','#AF69EF']
     )
     fig.update_layout(
         height=700, width=1000,
-        title=f'比特币ETF持仓每日增长量分布（截止 2024-1-18）',
+        title=f'比特币ETF持仓每日增长量分布',
         xaxis_title=None,
-        yaxis_title='比特币持有量',
+        yaxis_title='比特币持有量变化分布',
         legend_title_text=None,
         legend=dict(orientation="v",yanchor="top",y=1,xanchor="left",x=1),
         annotations=[
             dict(xref="paper",yref="paper",x=0,y=-.1,showarrow=False,
-                text="数据来源：ARK Invest, BlackRock, Valkyrie, Invesco, Franklin Templeton, Fidelity",
+                text="数据来源：ARK Invest, BlackRock, Valkyrie, Invesco, Franklin Templeton, Fidelity, Grayscale",
                 font=dict(size=12,color="white"
                 )
             )
