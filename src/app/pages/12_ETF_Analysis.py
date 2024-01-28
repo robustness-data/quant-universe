@@ -38,24 +38,28 @@ def get_xbi_holdings():
     xbi_holdings = pd.read_excel(spdr_xbi, skiprows=4).dropna()
     return xbi_holdings
 
+if 'etf_holdings' not in st.session_state:
+    st.session_state['etf_holdings'] = load_etf_holdings()
 if 'tradeview' not in st.session_state:
     st.session_state['tradeview'] = TradingView()
 if 'filtered_tv_df' not in st.session_state:
     st.session_state['filtered_tv_df'] = pd.DataFrame()
 
 dt = st.date_input('Date', datetime.date.today())
-with st.expander('TradingView Data'):
-    filtered_tv_df = filter_dataframe(st.session_state['tradeview'].data_df.query(f"Date == '{dt}'"), [])
-    st.write(filtered_tv_df, use_container_width=True)
-    st.session_state['filtered_tv_df'] = filtered_tv_df
-    st.write(st.session_state['filtered_tv_df'].columns.tolist())
+
+st.write(st.session_state['tradeview'].data_df.columns.tolist())
 
 # ---------------------------------- Tabs ------------------------------------ #
-tab1, tab2, tab3 = st.tabs(["ETF Analysis", "GS Healthcare Screener", "XBI/LABU Analysis"])
+tab1, tab2, tab3 = st.tabs(["TradingView Data", "GS Healthcare Screener", "XBI/LABU Analysis"])
 
 with tab1:
-    if 'etf_holdings' not in st.session_state:
-        st.session_state['etf_holdings'] = load_etf_holdings()
+
+    filtered_tv_df = filter_dataframe(
+        df=st.session_state['tradeview'].data_df.query(f"Date == '{dt}'"), 
+        default_cols=['Date','Ticker','Description','Price','Upcoming Earnings Date','Recent Earnings Date']
+    )
+    st.write(filtered_tv_df, use_container_width=True)
+    st.session_state['filtered_tv_df'] = filtered_tv_df
 
 
 with tab2:
@@ -72,7 +76,8 @@ with tab2:
         filtered_gs_data = filtered_gs_data\
             .assign(target_return=
                 lambda x: x['Upside/Downside (%)']\
-                .apply(lambda y: y.replace('(','-').replace(')','').replace('%','').replace('--','nan'))\
+                .apply(lambda y: 
+                       y.replace('(','-').replace(')','').replace('%','').replace(',','').replace('--','nan'))\
                 .astype(float)
             )
         st.write(filtered_gs_data, use_container_width=True)
@@ -123,3 +128,10 @@ with tab3:
             # make legend on the pie
             fig.update_traces(textposition='inside', textinfo='percent+label')
             st.plotly_chart(fig)
+
+    with st.expander("XBI + TV"):
+        xbi_holdings = st.session_state['xbi_holdings']
+        tv_data = st.session_state['filtered_tv_df']
+        st.write(st.session_state['filtered_tv_df'].columns.tolist())
+        xbi_meet_tv = xbi_holdings.merge(tv_data, on='Ticker', how='left')
+        st.write(xbi_meet_tv)
