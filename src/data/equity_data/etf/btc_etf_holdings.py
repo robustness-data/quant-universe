@@ -87,11 +87,63 @@ def scrape_brrr_holdings():
     return pd.DataFrame({'BRRR': brrr_info})
 
 
+def scrape_gbtc_holdings():
+    soup = scrape_webpage("https://etfs.grayscale.com/gbtc")
+    def parse_gbtc_str(x):
+        step1=x.replace('Key Fund Information','').replace('As of ','')
+        as_of_date, step2 = step1.split('Assets Under Management (Non-GAAP)$')
+        aum, step3 = step2.split('Base Currency')
+        currency, step4 = step3.split('Shares Outstanding')
+        shares_outstanding, step5 = step4.split('Sponsor')
+        sponsor, step6 = step5.split('Total Expense Ratio*')
+        expense_ratio, step7 = step6.split('Index Provider')
+        index_provider, step8 = step7.split('Total Bitcoin in Trust')
+        total_btc, step9 = step8.split('Fund Administrator')
+        fund_admin, step10 = step9.split('Bitcoin per Share')
+        btc_per_share, step11 = step10.split('Digital Asset Custodian')
+        digital_asset_custodian, step12 = step11.split('Marketing Agent')
+        marketing_agent = step12.strip()
+
+        return {
+            'as_of_date': pd.to_datetime(as_of_date).date().isoformat(),
+            'aum': float(aum.replace(',','')),
+            'currency': currency,
+            'shares_outstanding': int(shares_outstanding.replace(',','')),
+            'sponsor': sponsor,
+            'expense_ratio': expense_ratio,
+            'index_provider': index_provider,
+            'total_btc': float(total_btc.replace(',','')),
+            'fund_admin': fund_admin,
+            'btc_per_share': float(btc_per_share.replace(',','')),
+            'digital_asset_custodian': digital_asset_custodian,
+            'marketing_agent': marketing_agent
+        }
+    
+    for s in soup.find_all('div'):
+        c = s.get('class')
+        if c is None:
+            continue
+        if s.text.startswith("Overview"):
+            continue
+        if 'Tables_Tables__container_table__Tw2_H' in c:
+            parsed_holdings = parse_gbtc_str(s.text)
+
+    gbtc_info = {
+        'btc_holdings': parsed_holdings['total_btc'],
+        'btc_mv': parsed_holdings['aum']/1e9,
+        'date': parsed_holdings['as_of_date'],
+        'cash_holdings': 0.0,
+    }
+    gbtc_info['average_mv'] = 1e9*gbtc_info['btc_mv']/gbtc_info['btc_holdings']
+    return pd.DataFrame({'GBTC': gbtc_info})
+
+
 def scrape_btc_etf_holdings(max_retry: int):
     scraper_map = {
         'ARKB': scrape_arkb_holdings,
         'IBIT': scrape_ibit_holdings,
-        'BRRR': scrape_brrr_holdings
+        'BRRR': scrape_brrr_holdings,
+        'GBTC': scrape_gbtc_holdings,
     }
     
     holdings_list = []
