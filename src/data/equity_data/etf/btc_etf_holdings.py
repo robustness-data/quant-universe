@@ -266,6 +266,14 @@ def recalc_holdings(ticker, method='mv/price'):
         conn.close()
 
 
+def clean_up(ticker, date, new_holdings):
+    fill_missing_price(method='mv/quant')
+    avg_mv = get_holdings().groupby('date').average_mv.mean().to_dict()
+    for date, p in avg_mv.items():
+        fill_missing_price(method='value', date=date, price=p)    
+    fill_missing_holdings()
+
+
 def correct_date(ticker, original_date, new_date):
     import sqlite3
     from src.config import DB_DIR
@@ -301,11 +309,12 @@ def main():
     #print(get_holdings().to_string())
 
 
-def plot_btc_etf_holdings():
+def plot_btc_etf_holdings(dates_to_remove: list):
     fig = px.bar(
         get_holdings().set_index(['date','etf_ticker'])\
             .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC']]\
             .dropna(how='all')\
+            .drop(dates_to_remove, errors='ignore')\
             .rename(columns={'ARKB': 'ARK 21Shares Bitcoin ETF', 
                             'IBIT': '贝莱德比特币ETF',
                             'FBTC': 'Fidelity比特币ETF',
