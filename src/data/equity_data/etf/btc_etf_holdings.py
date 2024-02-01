@@ -266,7 +266,7 @@ def recalc_holdings(ticker, method='mv/price'):
         conn.close()
 
 
-def clean_up(ticker, date, new_holdings):
+def clean_up():
     fill_missing_price(method='mv/quant')
     avg_mv = get_holdings().groupby('date').average_mv.mean().to_dict()
     for date, p in avg_mv.items():
