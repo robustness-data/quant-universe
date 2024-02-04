@@ -2,6 +2,7 @@ import os, sys, zipfile
 from io import BytesIO
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 
 from pathlib import Path
 ROOT_DIR = Path(__file__).parent.parent.parent
@@ -39,19 +40,39 @@ def compile_tradingview_data():
     file_list.sort()
     data_list = []
     for f in tqdm(file_list, desc="Compiling TradingView data ..."):
-        print(f)
+        #print(f)
         output = _read_zip_file(cfg.TV_CACHE_DIR/'raw'/f)
         for filename, df in output.items():
-            print(filename.replace('.csv', '').split('_'))
+            #print(filename.replace('.csv', '').split('_'))
             index, as_of_date = filename.replace('.csv', '').split('_')
             try:
                 data_list.append(df.assign(Universe=index).assign(Date=as_of_date))
                 del df
             except Exception as e:
                 print("Failed to append data from %s: %s", filename, e)
-    all_data_df = pd.concat(data_list)
-    all_data_df = all_data_df.dropna(subset='Market Capitalization')
-    all_data_df.astype(str).to_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
+    data = pd.concat(data_list)
+
+    def clean_up_str(s):
+        if s in ('nan','None',None,''):
+            return np.nan
+        return s
+
+    for t in tqdm(data.dtypes.index):
+        if data.dtypes[t] == object:
+            data[t] = data[t].apply(clean_up_str)
+            print(t, data.dtypes[t])
+            try:
+                print(f'Converting {t} to numeric')
+                data[t] = pd.to_numeric(data[t])
+            except Exception as e:
+                print(f'<ERROR>: Could not convert {t} to numeric: {e}')
+                try:
+                    print(f'<NEXT>: Converting {t} to datetime')
+                    data[t] = pd.to_datetime(data[t], format='%Y-%m-%d')
+                except Exception as e:
+                    print(f'<ERROR>: Could not convert {t} to datetime either: {e}')
+
+    data.to_parquet(cfg.TV_CACHE_DIR/'tradingview_data.parquet')
 
 
 if __name__ == '__main__':
