@@ -1,10 +1,12 @@
 import sys, os
 import itertools
+from io import StringIO
 from pathlib import Path
 ROOT_DIR=Path(__file__).parent.parent.parent.parent.parent
 sys.path.append(str(ROOT_DIR))
 
 from src.utils.pandas_utils import df_filter, set_cols_numeric
+from src.utils.general_utils import get_previous_trading_day
 from src.data.equity_data.tradingview import TradingView
 from src.config import DB_DIR
 from src.data.equity_data.etf.holdings import get_ark_etf_holdings, scrape_webpage, spdr_etfs_urls
@@ -51,7 +53,7 @@ def scrape_arkb_holdings():
     arkb_holdings = get_ark_etf_holdings('ARKB').set_index('ticker')
     return pd.DataFrame({
         'ARKB': {
-            'date': arkb_holdings.xs('BTC')['date'],
+            'date': get_previous_trading_day(arkb_holdings.xs('BTC')['date']),
             'btc_holdings': arkb_holdings.xs('BTC')['shares'],
             'btc_mv': arkb_holdings.xs('BTC')['market_value']/1e9,
             'average_mv': arkb_holdings.xs('BTC').market_value/arkb_holdings.xs('BTC').shares,
@@ -67,7 +69,7 @@ def scrape_brrr_holdings():
         if div.has_attr('class'):
             if "mcb-item-jm3z2by6" in div['class']:
                 tables = div.find_all('table')
-                parsed_holdings = pd.read_html(str(tables[0]))[0]
+                parsed_holdings = pd.read_html(StringIO(str(tables[0])))[0]
                 
             if "mcb-column-inner-118575426" in div['class']:
                 h2s = div.find_all('h2')

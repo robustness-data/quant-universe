@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import datetime
+import holidays
 
 
 def get_method_names(obj):
@@ -7,11 +9,25 @@ def get_method_names(obj):
 
 
 def convert_to_float(x, multiplier=1.0, default=np.nan):
+    """
+    Converts the input value to a float, applying a multiplier if provided.
+
+    Args:
+        x: The value to be converted.
+        multiplier: Optional. The multiplier to be applied to the converted value. Default is 1.0.
+        default: Optional. The default value to be returned if the conversion fails. Default is np.nan.
+
+    Returns:
+        The converted float value, multiplied by the multiplier if provided. If the conversion fails, returns the default value.
+    """
     if isinstance(x, float):
         return x * multiplier
     elif isinstance(x, int):
         return float(x) * multiplier
     elif isinstance(x, str):
+        # remove bad values and convert to float np.nan
+        if x in ['—','nan','none','null','n/a','N/A','None','NULL','NaN','NA']:
+            return default
         try:
             return float(x.replace(',','')) * multiplier
         except Exception as e:
@@ -67,3 +83,23 @@ def assign_market_cap_group(x):
         return "Nano"
     else:
         return "N/A"
+    
+
+def get_previous_trading_day(date):
+    """
+    Returns the previous trading day before the given date.
+
+    Parameters:
+    date (str or datetime): The date for which to find the previous trading day.
+
+    Returns:
+    str: The previous trading day in ISO format (YYYY-MM-DD).
+    """
+    date = pd.to_datetime(date)
+    import holidays
+    us_holidays = [pd.to_datetime(dt) for dt in holidays.US(years=date.year).keys()]
+    while True:
+        date = date - pd.Timedelta(days=1)
+        day = date.day_of_week
+        if day < 5 and date not in us_holidays:
+            return date.date().isoformat()
