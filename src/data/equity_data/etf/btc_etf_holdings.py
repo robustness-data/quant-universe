@@ -10,7 +10,7 @@ from src.utils.general_utils import get_previous_trading_day
 from src.data.equity_data.tradingview import TradingView
 from src.config import DB_DIR
 from src.data.equity_data.etf.holdings import get_ark_etf_holdings, scrape_webpage, spdr_etfs_urls
-from src.script.compile_etf_holdings import _download_etf_holdings
+from src.script.compile_etf_holdings import _download_ishares_holdings
 
 import streamlit as st
 import plotly.express as px
@@ -31,7 +31,7 @@ holdings_urls = {
 
 
 def scrape_ibit_holdings():
-    ibit_holdings = _download_etf_holdings(holdings_urls['IBIT'])\
+    ibit_holdings = _download_ishares_holdings(holdings_urls['IBIT'])\
         .set_index('Ticker')\
         .assign(Shares = lambda x: x['Shares'].apply(lambda y: y.replace(',','')).astype(float))\
         .rename(columns={'Market Value': 'mv'})\
