@@ -317,6 +317,7 @@ def plot_btc_etf_holdings(dates_to_remove: list):
             .btc_holdings.unstack().rename(pd.to_datetime)[['ARKB','IBIT','FBTC','BTCO','BRRR','EZBC']]\
             .dropna(how='all')\
             .drop(dates_to_remove, errors='ignore')\
+            .ffill()\
             .rename(columns={'ARKB': 'ARK 21Shares Bitcoin ETF', 
                             'IBIT': '贝莱德比特币ETF',
                             'FBTC': 'Fidelity比特币ETF',
