@@ -8,6 +8,7 @@ import random
 from pathlib import Path
 from tqdm import tqdm
 import pandas as pd
+import numpy as np
 from io import StringIO
 import requests
 
@@ -24,41 +25,12 @@ if not os.path.exists(ETF_CACHE_DIR):
 base_url = 'https://www.ishares.com/us/products'
 
 
-def get_ishares_url(base_url, etf_id, etf_name, filename):
-    query=f"fileType=csv&fileName={filename}&dataType=fund"
-    ishares_url = f"{base_url}/{etf_id}/{etf_name}/1467271812596.ajax?{query}"
-    return ishares_url
-
-
-def cache_etf_holdings(spec, N=1):
-    tic, etf_id, etf_name, filename = spec
-    holdings_url = get_ishares_url(base_url, etf_id, etf_name, filename)
-    holdings_file = None
-    n = 1
-    while holdings_file is None:
-        try:
-            holdings_file = _download_etf_holdings(holdings_url)
-        except Exception as e:
-            print(f"Error: {e}")
-
-        if holdings_file is None:
-            print(f"Failed to download ETF holdings for {etf_name}. Retry {n}/{N}")
-            n += 1
-            time.sleep(random.randint(1, 3))
-            if n > N:
-                return None
-        else:
-            holdings_file['etf_ticker'] = tic
-            holdings_file['etf_name'] = etf_name
-            return holdings_file
-
-
 def cache_etf_by_group(etf_url_meta_file):
     etf_url_df=pd.read_csv(ETF_META_DIR/etf_url_meta_file)
     etf_dfs = []
     for i, row in tqdm(etf_url_df.iterrows(), total=etf_url_df.shape[0], desc=f'Caching {etf_url_meta_file}'):
         spec = (row['ticker'], row['etf-id'], row['etf_name'], row['file_name'])
-        holdings_file = cache_etf_holdings(spec)
+        holdings_file = _cache_ishares_holdings(spec)
         if holdings_file is not None:
             etf_dfs.append(holdings_file)
         else:
@@ -67,56 +39,76 @@ def cache_etf_by_group(etf_url_meta_file):
     return etf_dfs
 
 
-def _find_ivv_url_spec():
-    # use IVV as the reference
-    etf_url_df=pd.read_csv(ETF_META_DIR/'ishares_core_urls.csv')
-    ivv_spec=etf_url_df.query("ticker=='ivv'").iloc[0]
-    return ivv_spec['ticker'], ivv_spec['etf-id'], ivv_spec['etf_name'], ivv_spec['file_name']
+def _remove_lastest_cache():
+    last_date = _find_latest_date()
+    filename = f'ishares_holdings_{last_date}.csv'
+    if os.path.exists(ETF_CACHE_DIR/filename):
+        print(f"Delete existing cached files and recaching ETF holdings for {last_date}")
+        try:
+            os.remove(ETF_CACHE_DIR/filename)
+            os.remove(ETF_CACHE_DIR/f'ishares_holdings_{last_date}.parquet')
+        except:
+            pass
+    else:
+        print(f"ETF holdings for {last_date} not found in the cache directory")
 
 
-def _find_latest_date():
-    spec = _find_ivv_url_spec()
-    df = cache_etf_holdings(spec)
-    return df.as_of_date.iloc[0]
-
-
-def cache_all_etf(chunk_size=100):
-
+def _check_cache_status():
     # get the cached ETF info
     last_date = _find_latest_date()
     filename = f'ishares_holdings_{last_date}.csv'
     has_cache = False
+    cached_df = None
+    cached_etf_id_list = []
     if os.path.exists(ETF_CACHE_DIR/filename):
-        print(f"ETF holdings for {last_date} already cached")
         cached_df = pd.read_csv(ETF_CACHE_DIR/filename)
         cached_etf_id_list = cached_df['etf_ticker'].apply(lambda x: x.lower()).unique().tolist()
         print(f"Found {len(cached_etf_id_list)} ETFs cached and the last date is {last_date}")
         has_cache = True
-    else:
-        cached_etf_id_list = []
+    return has_cache, cached_df, cached_etf_id_list
 
+
+def _get_ishares_etf_meta():
     # get all the ETF urls info
     etf_meta = []
     for f in os.listdir(ETF_META_DIR):
         etf_meta.append(pd.read_csv(ETF_META_DIR/f))
     etf_meta = pd.concat(etf_meta)
     etf_meta.drop_duplicates(inplace=True)
+    return etf_meta
 
-    # request holdings for non-cached ETFs
-    etf_dfs=[]
-    count = 1
-    for i, row in tqdm(etf_meta.iterrows(), total=etf_meta.shape[0], desc=f'Caching ETFs'):
-        if row['ticker'] not in cached_etf_id_list:
-            spec = (row['ticker'], row['etf-id'], row['etf_name'], row['file_name'])
-            holdings_file = cache_etf_holdings(spec)
-            if holdings_file is not None:
-                etf_dfs.append(holdings_file)
-            if count == chunk_size:
-                break
-            count += 1  # add one more count if successfully cached a new ETF
 
+def cache_all_etf(chunk_size=None, update_cache=False):
+
+    # check the current cache status
+    has_cache, cached_df, cached_etf_id_list = _check_cache_status()
+    
+    # remove the latest cache if update_cache is True
+    if has_cache and update_cache:
+        _remove_lastest_cache()
+        has_cache = False
+
+    # get the ETF meta info
+    etf_meta = _get_ishares_etf_meta()
+    assert not etf_meta.empty
+
+    if chunk_size is None:
+        chunk_size = etf_meta.shape[0]
+    
+    chunks = [etf_meta[i:i+chunk_size] for i in range(0, etf_meta.shape[0], chunk_size)]
+
+    etf_dfs = []
+    for ic, chunk in enumerate(chunks):
+        for i, row in tqdm(chunk.iterrows(), total=chunk.shape[0], desc=f'Caching iShares ETFs: chunk {ic}'):
+            if row['ticker'] not in cached_etf_id_list:
+                spec = (row['ticker'], row['etf-id'], row['etf_name'], row['file_name'])
+                holdings_file = _cache_ishares_holdings(spec)
+                if holdings_file is not None:
+                    etf_dfs.append(holdings_file)
+    
     if etf_dfs == []:
-        return cached_df
+        print('No new ETF holdings are cached.')
+        return 
 
     # compile the cache file
     etf_dfs = pd.concat(etf_dfs)
@@ -164,7 +156,49 @@ def compile_etf_holdings():
     return etf_dfs
 
 
-def _download_etf_holdings(holdings_url):
+def _get_ishares_url(base_url, etf_id, etf_name, filename):
+    query=f"fileType=csv&fileName={filename}&dataType=fund"
+    ishares_url = f"{base_url}/{etf_id}/{etf_name}/1467271812596.ajax?{query}"
+    return ishares_url
+
+
+def _cache_ishares_holdings(spec, N=1):
+    tic, etf_id, etf_name, filename = spec
+    holdings_url = _get_ishares_url(base_url, etf_id, etf_name, filename)
+    holdings_file = None
+    n = 1
+    while holdings_file is None:
+        try:
+            holdings_file = _download_ishares_holdings(holdings_url)
+        except Exception as e:
+            print(f"Error: {e}")
+
+        if holdings_file is None:
+            print(f"Failed to download ETF holdings for {etf_name}. Retry {n}/{N}")
+            n += 1
+            time.sleep(random.randint(1, 3))
+            if n > N:
+                return None
+        else:
+            holdings_file['etf_ticker'] = tic
+            holdings_file['etf_name'] = etf_name
+            return holdings_file
+
+
+def _find_ivv_url_spec():
+    # use IVV as the reference
+    etf_url_df=pd.read_csv(ETF_META_DIR/'ishares_core_urls.csv')
+    ivv_spec=etf_url_df.query("ticker=='ivv'").iloc[0]
+    return ivv_spec['ticker'], ivv_spec['etf-id'], ivv_spec['etf_name'], ivv_spec['file_name']
+
+
+def _find_latest_date():
+    spec = _find_ivv_url_spec()
+    df = _cache_ishares_holdings(spec)
+    return df.as_of_date.iloc[0]
+
+
+def _download_ishares_holdings(holdings_url):
     holdings_file = _fetch_ishares_holdings_file(holdings_url)
     start_line = None
     end_line = None
@@ -244,6 +278,8 @@ def _convert_to_float(x):
     elif isinstance(x, int):
         return float(x)
     elif isinstance(x, str):
+        if x.strip() in ['——','-','—-','nan','none','null','n/a','N/A','None','NULL','NaN','NA']:
+            return np.nan
         try:
             return float(x.replace(',',''))
         except Exception as e:
@@ -253,5 +289,4 @@ def _convert_to_float(x):
 
 if __name__ == '__main__':
 
-    for i in range(3):
-        cache_all_etf(chunk_size=100)
+    chunks = cache_all_etf(chunk_size=None, update_cache=True)
